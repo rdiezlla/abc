@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+import json
 from pathlib import Path
 import re
 
@@ -9,7 +10,11 @@ import pandas as pd
 
 
 MOVIMIENTOS_FILE = Path("movimientos.xlsx")
-OUTPUT_FILE = Path("analisis_rotacion_abc_2026.xlsx")
+OUTPUT_DIR = Path("output")
+PARQUET_DIR = OUTPUT_DIR / "parquet"
+JSON_DIR = OUTPUT_DIR / "json"
+AUDIT_DIR = OUTPUT_DIR / "auditoria"
+AUDIT_FILE = AUDIT_DIR / "analisis_rotacion_abc_auditoria.xlsx"
 RECENT_DAYS = 14
 ROLLING_DAYS = 30
 
@@ -36,8 +41,13 @@ C = Columns()
 
 def detect_stock_file(workdir: Path) -> Path:
     candidates: list[tuple[pd.Timestamp, Path]] = []
+    excluded = {
+        MOVIMIENTOS_FILE.name.lower(),
+        AUDIT_FILE.name.lower(),
+        "analisis_rotacion_abc_2026.xlsx",
+    }
     for path in workdir.glob("*.xlsx"):
-        if path.name.lower() in {MOVIMIENTOS_FILE.name.lower(), OUTPUT_FILE.name.lower()}:
+        if path.name.lower() in excluded:
             continue
         snapshot_date = parse_snapshot_date(path)
         if snapshot_date is not None:
@@ -107,6 +117,24 @@ def concat_frames(frames: list[pd.DataFrame]) -> pd.DataFrame:
     for frame in valid_frames:
         records.extend(frame.reindex(columns=columns).to_dict("records"))
     return pd.DataFrame.from_records(records, columns=columns)
+
+
+def ensure_output_dirs() -> None:
+    for directory in [OUTPUT_DIR, PARQUET_DIR, JSON_DIR, AUDIT_DIR]:
+        directory.mkdir(parents=True, exist_ok=True)
+
+
+def require_columns(frame: pd.DataFrame, required: list[str], dataset_name: str) -> None:
+    missing = [column for column in required if column not in frame.columns]
+    if missing:
+        raise ValueError(f"Faltan columnas en {dataset_name}: {missing}")
+
+
+def add_metadata_columns(frame: pd.DataFrame, snapshot_date: pd.Timestamp, generated_at: str) -> pd.DataFrame:
+    output = frame.copy()
+    output.insert(0, "generated_at", generated_at)
+    output.insert(0, "snapshot_date", snapshot_date.strftime("%Y-%m-%d"))
+    return output
 
 
 def add_pareto_classification(
@@ -1347,7 +1375,324 @@ def build_criteria_sheet(snapshot_date: pd.Timestamp, stock_file: Path) -> pd.Da
     )
 
 
-def save_excel(
+def build_dashboard_datasets(
+    detail_stock: pd.DataFrame,
+    article_ytd: pd.DataFrame,
+    article_30d: pd.DataFrame,
+    owner_quarterly: pd.DataFrame,
+    article_quarterly: pd.DataFrame,
+    quarterly_changes: pd.DataFrame,
+    snapshot_date: pd.Timestamp,
+    generated_at: str,
+) -> dict[str, pd.DataFrame]:
+    line_ytd = f"lineas_pi_{snapshot_date.year}"
+    qty_ytd = f"cantidad_pi_{snapshot_date.year}"
+    last_ytd = f"ultima_pi_{snapshot_date.year}"
+    days_ytd = f"dias_desde_ultima_pi_{snapshot_date.year}"
+
+    owner_current = detail_stock.copy()
+    owner_current["article_key"] = owner_current["articulo"]
+    owner_current["id_owner_article"] = owner_current["owner_key"].astype(str) + "|" + owner_current["article_key"].astype(str)
+    owner_current = owner_current.rename(
+        columns={
+            line_ytd: "lineas_pi_ytd",
+            qty_ytd: "cantidad_pi_ytd",
+            "porcentaje_lineas_pi": "porcentaje_lineas_pi_ytd",
+            "porcentaje_acumulado_pi": "porcentaje_acumulado_pi_ytd",
+            "rotacion_abc": "rotacion_abc_ytd",
+            "rotacion_final": "rotacion_final_ytd",
+            "criterio_rotacion": "criterio_rotacion_ytd",
+            last_ytd: "ultima_pi_ytd",
+            days_ytd: "dias_desde_ultima_pi_ytd",
+        }
+    )
+    owner_current = add_metadata_columns(owner_current, snapshot_date, generated_at)
+    owner_current = owner_current[
+        [
+            "snapshot_date",
+            "generated_at",
+            "id_owner_article",
+            "propietario",
+            "owner_key",
+            "articulo",
+            "article_key",
+            "descripcion",
+            "stock_actual",
+            "ubicaciones_con_stock",
+            "lineas_pi_ytd",
+            "cantidad_pi_ytd",
+            "porcentaje_lineas_pi_ytd",
+            "porcentaje_acumulado_pi_ytd",
+            "rotacion_abc_ytd",
+            "rotacion_final_ytd",
+            "criterio_rotacion_ytd",
+            "ultima_pi_ytd",
+            "dias_desde_ultima_pi_ytd",
+            "ultima_cr",
+            "dias_desde_ultima_cr",
+            "lineas_cr_historico",
+            "cantidad_cr_historico",
+            "lineas_pi_30d",
+            "cantidad_pi_30d",
+            "porcentaje_lineas_pi_30d",
+            "porcentaje_acumulado_pi_30d",
+            "rotacion_abc_30d",
+            "rotacion_final_30d",
+            "ultima_pi_30d",
+            "dias_desde_ultima_pi_30d",
+            "cobertura_lineas_30d",
+            "cobertura_cantidad_30d",
+            "inactivo_30d",
+            "inactivo_90d",
+            "dispersion_stock",
+            "densidad_stock",
+            "flag_sobrestock",
+            "flag_reubicar",
+        ]
+    ]
+    require_columns(owner_current, owner_current.columns.tolist(), "stock_abc_actual_owner_article")
+
+    article_current = article_ytd.copy()
+    article_current["article_key"] = article_current["articulo"]
+    article_current["id_article"] = article_current["article_key"]
+    article_current["ubicaciones_con_stock"] = article_current.get("ubicaciones_con_stock", article_current["dispersion_stock"])
+    article_current = article_current.merge(
+        article_30d[
+            [
+                "articulo",
+                "lineas_pi_30d",
+                "cantidad_pi_30d",
+                "porcentaje_lineas_pi_30d",
+                "porcentaje_acumulado_pi_30d",
+                "rotacion_abc_30d",
+                "rotacion_final_30d",
+                "ultima_pi_30d",
+                "dias_desde_ultima_pi_30d",
+            ]
+        ],
+        how="left",
+        on="articulo",
+        suffixes=("", "_30d_merge"),
+    )
+    article_current = add_metadata_columns(article_current, snapshot_date, generated_at)
+    article_current = article_current[
+        [
+            "snapshot_date",
+            "generated_at",
+            "id_article",
+            "articulo",
+            "article_key",
+            "descripcion",
+            "propietarios_distintos",
+            "stock_actual_total",
+            "ubicaciones_con_stock",
+            "lineas_pi_ytd",
+            "cantidad_pi_ytd",
+            "porcentaje_lineas_pi_ytd",
+            "porcentaje_acumulado_pi_ytd",
+            "rotacion_abc_ytd",
+            "rotacion_final_ytd",
+            "criterio_rotacion_ytd",
+            "ultima_pi_ytd",
+            "dias_desde_ultima_pi_ytd",
+            "ultima_cr",
+            "dias_desde_ultima_cr",
+            "lineas_cr_historico",
+            "cantidad_cr_historico",
+            "lineas_pi_30d",
+            "cantidad_pi_30d",
+            "porcentaje_lineas_pi_30d",
+            "porcentaje_acumulado_pi_30d",
+            "rotacion_abc_30d",
+            "rotacion_final_30d",
+            "ultima_pi_30d",
+            "dias_desde_ultima_pi_30d",
+            "cobertura_lineas_30d",
+            "cobertura_cantidad_30d",
+            "inactivo_30d",
+            "inactivo_90d",
+            "dispersion_stock",
+            "densidad_stock",
+            "flag_sobrestock",
+            "flag_reubicar",
+        ]
+    ]
+
+    quarterly_owner = owner_quarterly.copy()
+    quarterly_owner["article_key"] = quarterly_owner["articulo"]
+    quarterly_owner["id_owner_article"] = quarterly_owner["owner_key"].astype(str) + "|" + quarterly_owner["article_key"].astype(str)
+    quarterly_owner = quarterly_owner.rename(
+        columns={
+            "stock_actual": "stock_actual_foto",
+            "ubicaciones_con_stock": "ubicaciones_con_stock_foto",
+        }
+    )
+    quarterly_owner = add_metadata_columns(quarterly_owner, snapshot_date, generated_at)
+    quarterly_owner = quarterly_owner[
+        [
+            "period_label",
+            "year",
+            "quarter",
+            "snapshot_date",
+            "generated_at",
+            "id_owner_article",
+            "propietario",
+            "owner_key",
+            "articulo",
+            "article_key",
+            "descripcion",
+            "lineas_pi_trimestre",
+            "cantidad_pi_trimestre",
+            "porcentaje_lineas_pi_trimestre",
+            "porcentaje_acumulado_pi_trimestre",
+            "rotacion_abc_trimestre",
+            "rotacion_final_trimestre",
+            "criterio_rotacion_trimestre",
+            "ultima_pi_trimestre",
+            "ultima_cr_hasta_fin_trimestre",
+            "stock_actual_foto",
+            "ubicaciones_con_stock_foto",
+        ]
+    ]
+
+    quarterly_article = article_quarterly.copy()
+    quarterly_article["article_key"] = quarterly_article["articulo"]
+    quarterly_article["id_article"] = quarterly_article["article_key"]
+    quarterly_article = quarterly_article.rename(
+        columns={
+            "stock_actual_total": "stock_actual_total_foto",
+            "ubicaciones_con_stock": "ubicaciones_con_stock_foto",
+        }
+    )
+    quarterly_article = add_metadata_columns(quarterly_article, snapshot_date, generated_at)
+    quarterly_article = quarterly_article[
+        [
+            "period_label",
+            "year",
+            "quarter",
+            "snapshot_date",
+            "generated_at",
+            "id_article",
+            "articulo",
+            "article_key",
+            "descripcion",
+            "propietarios_distintos",
+            "lineas_pi_trimestre",
+            "cantidad_pi_trimestre",
+            "porcentaje_lineas_pi_trimestre",
+            "porcentaje_acumulado_pi_trimestre",
+            "rotacion_abc_trimestre",
+            "rotacion_final_trimestre",
+            "criterio_rotacion_trimestre",
+            "ultima_pi_trimestre",
+            "ultima_cr_hasta_fin_trimestre",
+            "stock_actual_total_foto",
+            "ubicaciones_con_stock_foto",
+        ]
+    ]
+
+    quarterly_changes_clean = quarterly_changes.copy()
+    quarterly_changes_clean["article_key"] = quarterly_changes_clean["articulo"]
+    quarterly_changes_clean["id_article"] = quarterly_changes_clean["article_key"]
+    quarterly_changes_clean = quarterly_changes_clean.rename(columns={"stock_actual_total": "stock_actual_total_foto"})
+    quarterly_changes_clean = add_metadata_columns(quarterly_changes_clean, snapshot_date, generated_at)
+    quarterly_changes_clean = quarterly_changes_clean[
+        [
+            "period_label",
+            "year",
+            "quarter",
+            "snapshot_date",
+            "generated_at",
+            "id_article",
+            "articulo",
+            "article_key",
+            "descripcion",
+            "rotacion_trimestre_anterior",
+            "rotacion_final_trimestre",
+            "cambio_abc",
+            "sentido_cambio",
+            "lineas_pi_trimestre",
+            "cantidad_pi_trimestre",
+            "propietarios_distintos",
+            "stock_actual_total_foto",
+        ]
+    ]
+
+    return {
+        "stock_abc_actual_owner_article": owner_current,
+        "stock_abc_actual_article": article_current,
+        "stock_abc_historico_trimestral_owner_article": quarterly_owner,
+        "stock_abc_historico_trimestral_article": quarterly_article,
+        "stock_abc_cambios_trimestrales": quarterly_changes_clean,
+    }
+
+
+def build_kpi_json(
+    owner_current: pd.DataFrame,
+    article_current: pd.DataFrame,
+    quarterly_article: pd.DataFrame,
+    snapshot_date: pd.Timestamp,
+    generated_at: str,
+) -> dict[str, object]:
+    def count_class(frame: pd.DataFrame, class_col: str, class_value: str) -> int:
+        return int(frame[class_col].eq(class_value).sum())
+
+    def stock_class(frame: pd.DataFrame, class_col: str, stock_col: str, class_value: str) -> float:
+        return float(frame.loc[frame[class_col] == class_value, stock_col].sum())
+
+    top_ytd = article_current.sort_values(
+        ["lineas_pi_ytd", "cantidad_pi_ytd", "stock_actual_total"],
+        ascending=[False, False, False],
+    ).head(10)
+    top_30d = article_current.sort_values(
+        ["lineas_pi_30d", "cantidad_pi_30d", "stock_actual_total"],
+        ascending=[False, False, False],
+    ).head(10)
+
+    ultimo_trimestre = None
+    if not quarterly_article.empty:
+        ultimo = quarterly_article.sort_values(["year", "quarter"]).iloc[-1]
+        ultimo_trimestre = str(ultimo["period_label"])
+
+    return {
+        "snapshot_date": snapshot_date.strftime("%Y-%m-%d"),
+        "generated_at": generated_at,
+        "total_referencias_owner_article": int(len(owner_current)),
+        "total_referencias_articulo": int(len(article_current)),
+        "stock_total_owner_article": float(owner_current["stock_actual"].sum()),
+        "stock_total_articulo": float(article_current["stock_actual_total"].sum()),
+        "referencias_A_ytd": count_class(article_current, "rotacion_final_ytd", "A"),
+        "referencias_B_ytd": count_class(article_current, "rotacion_final_ytd", "B"),
+        "referencias_C_ytd": count_class(article_current, "rotacion_final_ytd", "C"),
+        "referencias_D_ytd": count_class(article_current, "rotacion_final_ytd", "D"),
+        "referencias_recien_llegado_ytd": count_class(article_current, "rotacion_final_ytd", "Sin rotación, recién llegado"),
+        "stock_A_ytd": stock_class(article_current, "rotacion_final_ytd", "stock_actual_total", "A"),
+        "stock_B_ytd": stock_class(article_current, "rotacion_final_ytd", "stock_actual_total", "B"),
+        "stock_C_ytd": stock_class(article_current, "rotacion_final_ytd", "stock_actual_total", "C"),
+        "stock_D_ytd": stock_class(article_current, "rotacion_final_ytd", "stock_actual_total", "D"),
+        "stock_recien_llegado_ytd": stock_class(article_current, "rotacion_final_ytd", "stock_actual_total", "Sin rotación, recién llegado"),
+        "referencias_A_30d": count_class(article_current, "rotacion_final_30d", "A"),
+        "referencias_B_30d": count_class(article_current, "rotacion_final_30d", "B"),
+        "referencias_C_30d": count_class(article_current, "rotacion_final_30d", "C"),
+        "referencias_D_30d": count_class(article_current, "rotacion_final_30d", "D"),
+        "referencias_recien_llegado_30d": count_class(article_current, "rotacion_final_30d", "Sin rotación 30d, recién llegado"),
+        "articulos_flag_sobrestock": int(article_current["flag_sobrestock"].eq("Sí").sum()),
+        "articulos_flag_reubicar": int(article_current["flag_reubicar"].eq("Sí").sum()),
+        "top_10_articulos_ytd": json.loads(
+            top_ytd[
+                ["articulo", "descripcion", "lineas_pi_ytd", "cantidad_pi_ytd", "rotacion_final_ytd", "stock_actual_total"]
+            ].to_json(orient="records", force_ascii=False)
+        ),
+        "top_10_articulos_30d": json.loads(
+            top_30d[
+                ["articulo", "descripcion", "lineas_pi_30d", "cantidad_pi_30d", "rotacion_final_30d", "stock_actual_total"]
+            ].to_json(orient="records", force_ascii=False)
+        ),
+        "ultimo_trimestre_disponible": ultimo_trimestre,
+    }
+
+
+def build_audit_excel(
     detail_stock: pd.DataFrame,
     summary_current: pd.DataFrame,
     criteria: pd.DataFrame,
@@ -1361,22 +1706,77 @@ def save_excel(
     summary_30d: pd.DataFrame,
     summary_quarterly: pd.DataFrame,
 ) -> None:
-    with pd.ExcelWriter(OUTPUT_FILE, engine="openpyxl") as writer:
+    owner_quarterly_audit = owner_quarterly.rename(
+        columns={
+            "stock_actual": "stock_actual_foto",
+            "ubicaciones_con_stock": "ubicaciones_con_stock_foto",
+        }
+    )
+    article_quarterly_audit = article_quarterly.rename(
+        columns={
+            "stock_actual_total": "stock_actual_total_foto",
+            "ubicaciones_con_stock": "ubicaciones_con_stock_foto",
+        }
+    )
+    quarterly_changes_audit = quarterly_changes.rename(columns={"stock_actual_total": "stock_actual_total_foto"})
+
+    with pd.ExcelWriter(AUDIT_FILE, engine="openpyxl") as writer:
         detail_stock.to_excel(writer, sheet_name="Detalle stock", index=False)
         summary_current.to_excel(writer, sheet_name="Resumen", index=False)
         criteria.to_excel(writer, sheet_name="Criterios", index=False)
         article_ytd.to_excel(writer, sheet_name="ABC articulo unico YTD", index=False)
         owner_30d.to_excel(writer, sheet_name="ABC 30d owner-articulo", index=False)
         article_30d.to_excel(writer, sheet_name="ABC articulo unico 30d", index=False)
-        owner_quarterly.to_excel(writer, sheet_name="ABC trimestral owner-articulo", index=False)
-        article_quarterly.to_excel(writer, sheet_name="ABC trimestral articulo", index=False)
-        quarterly_changes.to_excel(writer, sheet_name="Cambios ABC trimestral", index=False)
+        owner_quarterly_audit.to_excel(writer, sheet_name="ABC trimestral owner-articulo", index=False)
+        article_quarterly_audit.to_excel(writer, sheet_name="ABC trimestral articulo", index=False)
+        quarterly_changes_audit.to_excel(writer, sheet_name="Cambios ABC trimestral", index=False)
         summary_article.to_excel(writer, sheet_name="Resumen articulo unico", index=False)
         summary_30d.to_excel(writer, sheet_name="Resumen 30d", index=False)
         summary_quarterly.to_excel(writer, sheet_name="Resumen trimestral", index=False)
 
 
+def save_outputs(
+    datasets: dict[str, pd.DataFrame],
+    kpis: dict[str, object],
+    detail_stock: pd.DataFrame,
+    summary_current: pd.DataFrame,
+    criteria: pd.DataFrame,
+    article_ytd: pd.DataFrame,
+    owner_30d: pd.DataFrame,
+    article_30d: pd.DataFrame,
+    owner_quarterly: pd.DataFrame,
+    article_quarterly: pd.DataFrame,
+    quarterly_changes: pd.DataFrame,
+    summary_article: pd.DataFrame,
+    summary_30d: pd.DataFrame,
+    summary_quarterly: pd.DataFrame,
+) -> None:
+    ensure_output_dirs()
+
+    for dataset_name, frame in datasets.items():
+        frame.to_parquet(PARQUET_DIR / f"{dataset_name}.parquet", index=False)
+
+    with (JSON_DIR / "stock_abc_resumen_kpis.json").open("w", encoding="utf-8") as handle:
+        json.dump(kpis, handle, ensure_ascii=False, indent=2)
+
+    build_audit_excel(
+        detail_stock,
+        summary_current,
+        criteria,
+        article_ytd,
+        owner_30d,
+        article_30d,
+        owner_quarterly,
+        article_quarterly,
+        quarterly_changes,
+        summary_article,
+        summary_30d,
+        summary_quarterly,
+    )
+
+
 def main() -> None:
+    generated_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     stock_file = detect_stock_file(Path.cwd())
     snapshot_date = parse_snapshot_date(stock_file)
     if snapshot_date is None:
@@ -1408,7 +1808,27 @@ def main() -> None:
     )
     criteria = build_criteria_sheet(snapshot_date, stock_file)
 
-    save_excel(
+    datasets = build_dashboard_datasets(
+        detail_stock,
+        article_ytd,
+        article_30d,
+        owner_quarterly,
+        article_quarterly,
+        quarterly_changes,
+        snapshot_date,
+        generated_at,
+    )
+    kpis = build_kpi_json(
+        datasets["stock_abc_actual_owner_article"],
+        datasets["stock_abc_actual_article"],
+        datasets["stock_abc_historico_trimestral_article"],
+        snapshot_date,
+        generated_at,
+    )
+
+    save_outputs(
+        datasets,
+        kpis,
         detail_stock,
         summary_current,
         criteria,
@@ -1423,7 +1843,9 @@ def main() -> None:
         summary_quarterly,
     )
 
-    print(f"Archivo generado: {OUTPUT_FILE}")
+    print(f"Datasets Parquet generados en: {PARQUET_DIR}")
+    print(f"JSON KPI generado en: {JSON_DIR / 'stock_abc_resumen_kpis.json'}")
+    print(f"Excel de auditoría generado en: {AUDIT_FILE}")
     print(f"Fichero de stock usado: {stock_file.name}")
     print(f"Fecha foto de stock: {snapshot_date.date()}")
 
