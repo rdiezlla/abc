@@ -1756,7 +1756,7 @@ def save_outputs(
     for dataset_name, frame in datasets.items():
         frame.to_parquet(PARQUET_DIR / f"{dataset_name}.parquet", index=False)
 
-    with (JSON_DIR / "stock_abc_resumen_kpis.json").open("w", encoding="utf-8") as handle:
+    with (JSON_DIR / "stock_abc_resumen_kpis.json").open("w", encoding="utf-8", newline="\n") as handle:
         json.dump(kpis, handle, ensure_ascii=False, indent=2)
 
     build_audit_excel(

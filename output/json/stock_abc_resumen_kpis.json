@@ -1,0 +1,190 @@
+{
+  "snapshot_date": "2026-03-31",
+  "generated_at": "2026-03-31 11:39:10",
+  "total_referencias_owner_article": 4842,
+  "total_referencias_articulo": 4400,
+  "stock_total_owner_article": 466263.0,
+  "stock_total_articulo": 466263.0,
+  "referencias_A_ytd": 159,
+  "referencias_B_ytd": 239,
+  "referencias_C_ytd": 104,
+  "referencias_D_ytd": 3892,
+  "referencias_recien_llegado_ytd": 6,
+  "stock_A_ytd": 167517.0,
+  "stock_B_ytd": 36145.0,
+  "stock_C_ytd": 127.0,
+  "stock_D_ytd": 262414.0,
+  "stock_recien_llegado_ytd": 60.0,
+  "referencias_A_30d": 77,
+  "referencias_B_30d": 113,
+  "referencias_C_30d": 21,
+  "referencias_D_30d": 4182,
+  "referencias_recien_llegado_30d": 7,
+  "articulos_flag_sobrestock": 909,
+  "articulos_flag_reubicar": 12,
+  "top_10_articulos_ytd": [
+    {
+      "articulo": "019080",
+      "descripcion": "TINTO DE VERANO CON LIMON CACHIS MARIANO",
+      "lineas_pi_ytd": 223,
+      "cantidad_pi_ytd": 8052.0,
+      "rotacion_final_ytd": "A",
+      "stock_actual_total": 1536.0
+    },
+    {
+      "articulo": "018428",
+      "descripcion": "AGUA 50CL PLÁSTICO SOLAN 2025 CALCIO, MA",
+      "lineas_pi_ytd": 143,
+      "cantidad_pi_ytd": 31872.78,
+      "rotacion_final_ytd": "A",
+      "stock_actual_total": 7862.0
+    },
+    {
+      "articulo": "011110",
+      "descripcion": "CERVEZA 33CL MAHOU 5 ESTRELLAS  NUEVA IM",
+      "lineas_pi_ytd": 135,
+      "cantidad_pi_ytd": 22695.24,
+      "rotacion_final_ytd": "A",
+      "stock_actual_total": 4435.0
+    },
+    {
+      "articulo": "014012",
+      "descripcion": "CERVEZA 33CL MAHOU TOSTADA 0,0 (2751)",
+      "lineas_pi_ytd": 61,
+      "cantidad_pi_ytd": 5520.0,
+      "rotacion_final_ytd": "A",
+      "stock_actual_total": 5706.0
+    },
+    {
+      "articulo": "012012",
+      "descripcion": "CERVEZA 33CL ALHAMBRA RESERVA 1925 (5420",
+      "lineas_pi_ytd": 56,
+      "cantidad_pi_ytd": 13609.08,
+      "rotacion_final_ytd": "A",
+      "stock_actual_total": 1841.0
+    },
+    {
+      "articulo": "126073",
+      "descripcion": "POSAVASO BRUTUS 2025",
+      "lineas_pi_ytd": 49,
+      "cantidad_pi_ytd": 9254.7,
+      "rotacion_final_ytd": "A",
+      "stock_actual_total": 89.0
+    },
+    {
+      "articulo": "011127",
+      "descripcion": "CERVEZA 33CL MAHOU RESERVA",
+      "lineas_pi_ytd": 41,
+      "cantidad_pi_ytd": 5832.0,
+      "rotacion_final_ytd": "A",
+      "stock_actual_total": 3530.0
+    },
+    {
+      "articulo": "202068",
+      "descripcion": "SOMBRILLA BLANCA CON FALDÓN NEGRO LOGO B",
+      "lineas_pi_ytd": 40,
+      "cantidad_pi_ytd": 180.0,
+      "rotacion_final_ytd": "A",
+      "stock_actual_total": 101.0
+    },
+    {
+      "articulo": "016010",
+      "descripcion": "BARRIL 30L MAHOU 5 ESTRELLAS (1593)",
+      "lineas_pi_ytd": 36,
+      "cantidad_pi_ytd": 205.0,
+      "rotacion_final_ytd": "A",
+      "stock_actual_total": 220.0
+    },
+    {
+      "articulo": "014042",
+      "descripcion": "CERVEZA 33CL MAHOU SIN GLUTEN (1813) 202",
+      "lineas_pi_ytd": 35,
+      "cantidad_pi_ytd": 2568.0,
+      "rotacion_final_ytd": "A",
+      "stock_actual_total": 2256.0
+    }
+  ],
+  "top_10_articulos_30d": [
+    {
+      "articulo": "126073",
+      "descripcion": "POSAVASO BRUTUS 2025",
+      "lineas_pi_30d": 46,
+      "cantidad_pi_30d": 7954.7,
+      "rotacion_final_30d": "A",
+      "stock_actual_total": 89.0
+    },
+    {
+      "articulo": "202068",
+      "descripcion": "SOMBRILLA BLANCA CON FALDÓN NEGRO LOGO B",
+      "lineas_pi_30d": 40,
+      "cantidad_pi_30d": 180.0,
+      "rotacion_final_30d": "A",
+      "stock_actual_total": 101.0
+    },
+    {
+      "articulo": "204096",
+      "descripcion": "BASE DE SOMBRILLA CON RUEDAS NEGRA EZPEL",
+      "lineas_pi_30d": 33,
+      "cantidad_pi_30d": 156.0,
+      "rotacion_final_30d": "A",
+      "stock_actual_total": 270.0
+    },
+    {
+      "articulo": "018428",
+      "descripcion": "AGUA 50CL PLÁSTICO SOLAN 2025 CALCIO, MA",
+      "lineas_pi_30d": 30,
+      "cantidad_pi_30d": 7501.08,
+      "rotacion_final_30d": "A",
+      "stock_actual_total": 7862.0
+    },
+    {
+      "articulo": "011110",
+      "descripcion": "CERVEZA 33CL MAHOU 5 ESTRELLAS  NUEVA IM",
+      "lineas_pi_30d": 23,
+      "cantidad_pi_30d": 5499.24,
+      "rotacion_final_30d": "A",
+      "stock_actual_total": 4435.0
+    },
+    {
+      "articulo": "012012",
+      "descripcion": "CERVEZA 33CL ALHAMBRA RESERVA 1925 (5420",
+      "lineas_pi_30d": 14,
+      "cantidad_pi_30d": 4465.08,
+      "rotacion_final_30d": "A",
+      "stock_actual_total": 1841.0
+    },
+    {
+      "articulo": "012085",
+      "descripcion": "CERVEZA ALHAMBRA MINI 22.5CL PACK 6UND X",
+      "lineas_pi_30d": 12,
+      "cantidad_pi_30d": 4368.0,
+      "rotacion_final_30d": "A",
+      "stock_actual_total": 1483.0
+    },
+    {
+      "articulo": "014012",
+      "descripcion": "CERVEZA 33CL MAHOU TOSTADA 0,0 (2751)",
+      "lineas_pi_30d": 11,
+      "cantidad_pi_30d": 1560.0,
+      "rotacion_final_30d": "A",
+      "stock_actual_total": 5706.0
+    },
+    {
+      "articulo": "202069",
+      "descripcion": "SOMBRILLA NEGRA LOGO BRUTUS",
+      "lineas_pi_30d": 9,
+      "cantidad_pi_30d": 29.0,
+      "rotacion_final_30d": "A",
+      "stock_actual_total": 157.0
+    },
+    {
+      "articulo": "092179",
+      "descripcion": "BARRA CHAPA ROJA CON LED LOGO EN PASTILL",
+      "lineas_pi_30d": 9,
+      "cantidad_pi_30d": 12.0,
+      "rotacion_final_30d": "A",
+      "stock_actual_total": 14.0
+    }
+  ],
+  "ultimo_trimestre_disponible": "2026Q1"
+}
