@@ -38,6 +38,21 @@ class Columns:
 
 C = Columns()
 
+MONTH_NAMES_ES = {
+    1: "Enero",
+    2: "Febrero",
+    3: "Marzo",
+    4: "Abril",
+    5: "Mayo",
+    6: "Junio",
+    7: "Julio",
+    8: "Agosto",
+    9: "Septiembre",
+    10: "Octubre",
+    11: "Noviembre",
+    12: "Diciembre",
+}
+
 
 def detect_stock_file(workdir: Path) -> Path:
     candidates: list[tuple[pd.Timestamp, Path]] = []
@@ -135,6 +150,43 @@ def add_metadata_columns(frame: pd.DataFrame, snapshot_date: pd.Timestamp, gener
     output.insert(0, "generated_at", generated_at)
     output.insert(0, "snapshot_date", snapshot_date.strftime("%Y-%m-%d"))
     return output
+
+
+def quarter_label(quarter: int) -> str:
+    return f"Q{int(quarter)}"
+
+
+def month_name_list(month_numbers: list[int]) -> str | None:
+    cleaned = [MONTH_NAMES_ES.get(int(month)) for month in month_numbers if pd.notna(month)]
+    cleaned = [name for name in cleaned if name]
+    return ", ".join(cleaned) if cleaned else None
+
+
+def quarter_name_list(quarters: list[int]) -> str | None:
+    cleaned = [quarter_label(int(quarter)) for quarter in quarters if pd.notna(quarter)]
+    return ", ".join(cleaned) if cleaned else None
+
+
+def compute_next_peak_month(current_month: int, peak_months: list[int]) -> tuple[str | None, float | None]:
+    valid_peaks = sorted({int(month) for month in peak_months if pd.notna(month)})
+    if not valid_peaks:
+        return None, None
+
+    distances = [((month - current_month) % 12, month) for month in valid_peaks]
+    distances.sort(key=lambda item: (item[0], item[1]))
+    months_to_peak, next_month = distances[0]
+    return MONTH_NAMES_ES.get(next_month), float(months_to_peak)
+
+
+def compute_next_peak_quarter(current_quarter: int, peak_quarters: list[int]) -> tuple[str | None, float | None]:
+    valid_peaks = sorted({int(quarter) for quarter in peak_quarters if pd.notna(quarter)})
+    if not valid_peaks:
+        return None, None
+
+    distances = [((quarter - current_quarter) % 4, quarter) for quarter in valid_peaks]
+    distances.sort(key=lambda item: (item[0], item[1]))
+    quarters_to_peak, next_quarter = distances[0]
+    return quarter_label(next_quarter), float(quarters_to_peak)
 
 
 def add_pareto_classification(
@@ -1692,6 +1744,708 @@ def build_kpi_json(
     }
 
 
+def build_temporality_criteria_sheet(snapshot_date: pd.Timestamp) -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "Parametro": [
+                "Horizonte temporal",
+                "Señal de demanda",
+                "Unidad principal de análisis",
+                "Definición Regular",
+                "Definición Estacional",
+                "Definición Intermitente",
+                "Definición Errático",
+                "Definición Dormido",
+                "Definición Nuevo / sin histórico suficiente",
+                "Definición warning rotación baja pero estacional",
+                "Definición warning stock dormido real",
+                "Definición mover a almacén secundario",
+                "Definición mover solo fuera de temporada",
+                "Definición mantener en almacén principal",
+                "Definición revisar manualmente",
+                "Limitaciones",
+            ],
+            "Valor": [
+                f"Histórico PI hasta {snapshot_date.strftime('%Y-%m-%d')} con perfiles mensuales, trimestrales y rolling implícito de 12 meses",
+                "Movimientos PI agregados por artículo único; CR se usa como contexto de entradas en la capa ABC existente",
+                "Artículo único (article_key), ignorando propietario en el patrón principal",
+                "ADI < 1.32, CV2 < 0.49 y sin señales fuertes de concentración estacional",
+                "Concentración alta en meses o trimestres concretos, índice estacional elevado y recurrencia suficiente entre años",
+                "ADI >= 1.32 y CV2 < 0.49, con demanda espaciada pero no especialmente volátil",
+                "CV2 >= 0.49 o patrón lumpiness, con variabilidad alta entre periodos activos",
+                "Sin actividad PI en los últimos 12 meses y con histórico muy débil o claramente agotado",
+                "Sin PI histórico o con menos de 3 meses activos / menos de 6 meses observados efectivos",
+                "SKU con rotación baja actual pero patrón estacional recurrente y pico futuro identificable",
+                "SKU con stock actual, nula actividad reciente y sin evidencia de patrón recurrente aprovechable",
+                "Baja rotación YTD y 30d, sobrestock o cobertura alta, inactividad reciente, baja recurrencia y sin pico próximo esperado",
+                "Patrón estacional claro, fuera de temporada actual y con necesidad de reposición antes del siguiente pico",
+                "Actividad actual alta o pico próximo esperado con riesgo alto de romper servicio si se traslada",
+                "Poco histórico, patrón ambiguo o comportamiento errático no robusto para automatizar decisión",
+                "Heurística explicable, no modelo predictivo. Conviene revisar junto con contexto comercial, campañas y capacidad real de almacenes.",
+            ],
+        }
+    )
+
+
+def build_temporality_outputs(
+    movements: pd.DataFrame,
+    article_current: pd.DataFrame,
+    snapshot_date: pd.Timestamp,
+    generated_at: str,
+) -> tuple[dict[str, pd.DataFrame], dict[str, object], pd.DataFrame]:
+    article_base = article_current[
+        [
+            "id_article",
+            "articulo",
+            "article_key",
+            "descripcion",
+            "rotacion_final_ytd",
+            "rotacion_final_30d",
+            "stock_actual_total",
+            "cobertura_lineas_30d",
+            "cobertura_cantidad_30d",
+            "inactivo_30d",
+            "inactivo_90d",
+            "propietarios_distintos",
+            "flag_sobrestock",
+            "flag_reubicar",
+        ]
+    ].drop_duplicates().copy()
+
+    pi = movements[movements[C.movement_type] == "PI"].copy()
+    if pi.empty:
+        empty_summary = add_metadata_columns(article_base.copy(), snapshot_date, generated_at)
+        return (
+            {
+                "stock_abc_temporalidad_article": empty_summary,
+                "stock_abc_temporalidad_monthly_article": pd.DataFrame(),
+                "stock_abc_temporalidad_quarterly_article": pd.DataFrame(),
+                "stock_abc_decision_almacen_article": pd.DataFrame(),
+            },
+            {
+                "snapshot_date": snapshot_date.strftime("%Y-%m-%d"),
+                "generated_at": generated_at,
+                "numero_articulos_regulares": 0,
+                "numero_articulos_estacionales": 0,
+                "numero_articulos_intermitentes": 0,
+                "numero_articulos_dormidos": 0,
+                "numero_candidatos_mover": 0,
+                "numero_candidatos_mantener": 0,
+                "numero_candidatos_mover_fuera_temporada": 0,
+                "top_estacionales": [],
+                "top_dormidos": [],
+                "top_riesgo_mala_decision_si_se_mueven": [],
+                "proximos_meses_pico_detectados": [],
+                "proximos_trimestres_pico_detectados": [],
+            },
+            build_temporality_criteria_sheet(snapshot_date),
+        )
+
+    pi["month_period"] = pi["fecha_movimiento"].dt.to_period("M")
+    pi["quarter_period"] = pi["fecha_movimiento"].dt.to_period("Q")
+
+    monthly_actual = (
+        pi.groupby(["article_key", "month_period"], dropna=False)
+        .agg(
+            lineas_pi_mes=("article_key", "size"),
+            cantidad_pi_mes=("cantidad_movimiento", "sum"),
+        )
+        .reset_index()
+    )
+    monthly_actual["year"] = monthly_actual["month_period"].dt.year
+    monthly_actual["month"] = monthly_actual["month_period"].dt.month
+    monthly_actual["period_label"] = monthly_actual["month_period"].astype(str)
+
+    quarterly_actual = (
+        pi.groupby(["article_key", "quarter_period"], dropna=False)
+        .agg(
+            lineas_pi_trimestre=("article_key", "size"),
+            cantidad_pi_trimestre=("cantidad_movimiento", "sum"),
+        )
+        .reset_index()
+    )
+    quarterly_actual["year"] = quarterly_actual["quarter_period"].dt.year
+    quarterly_actual["quarter"] = quarterly_actual["quarter_period"].dt.quarter
+    quarterly_actual["period_label"] = quarterly_actual["quarter_period"].astype(str)
+
+    start_month = pi["month_period"].min()
+    month_range = pd.period_range(start=start_month, end=snapshot_date.to_period("M"), freq="M")
+    month_dim = pd.DataFrame({"month_period": month_range})
+    month_dim["year"] = month_dim["month_period"].dt.year
+    month_dim["month"] = month_dim["month_period"].dt.month
+    month_dim["period_label"] = month_dim["month_period"].astype(str)
+
+    start_quarter = pi["quarter_period"].min()
+    quarter_range = pd.period_range(start=start_quarter, end=snapshot_date.to_period("Q"), freq="Q")
+    quarter_dim = pd.DataFrame({"quarter_period": quarter_range})
+    quarter_dim["year"] = quarter_dim["quarter_period"].dt.year
+    quarter_dim["quarter"] = quarter_dim["quarter_period"].dt.quarter
+    quarter_dim["period_label"] = quarter_dim["quarter_period"].astype(str)
+
+    monthly_full = article_base[["id_article", "articulo", "article_key", "descripcion"]].merge(month_dim, how="cross")
+    monthly_full = monthly_full.merge(
+        monthly_actual[["article_key", "month_period", "lineas_pi_mes", "cantidad_pi_mes"]],
+        how="left",
+        on=["article_key", "month_period"],
+    )
+    monthly_full["lineas_pi_mes"] = pd.to_numeric(monthly_full["lineas_pi_mes"], errors="coerce").fillna(0)
+    monthly_full["cantidad_pi_mes"] = pd.to_numeric(monthly_full["cantidad_pi_mes"], errors="coerce").fillna(0)
+
+    quarterly_full = article_base[["id_article", "articulo", "article_key", "descripcion"]].merge(quarter_dim, how="cross")
+    quarterly_full = quarterly_full.merge(
+        quarterly_actual[["article_key", "quarter_period", "lineas_pi_trimestre", "cantidad_pi_trimestre"]],
+        how="left",
+        on=["article_key", "quarter_period"],
+    )
+    quarterly_full["lineas_pi_trimestre"] = pd.to_numeric(quarterly_full["lineas_pi_trimestre"], errors="coerce").fillna(0)
+    quarterly_full["cantidad_pi_trimestre"] = pd.to_numeric(quarterly_full["cantidad_pi_trimestre"], errors="coerce").fillna(0)
+
+    hist = (
+        pi.groupby("article_key", dropna=False)
+        .agg(
+            first_pi_date=("fecha_movimiento", "min"),
+            last_pi_date=("fecha_movimiento", "max"),
+            years_with_activity=("year", "nunique"),
+            total_lineas_pi_historico=("article_key", "size"),
+            total_cantidad_pi_historico=("cantidad_movimiento", "sum"),
+        )
+        .reset_index()
+    )
+
+    monthly_activity = (
+        monthly_actual.groupby("article_key", dropna=False)
+        .agg(total_months_with_pi=("month_period", "nunique"))
+        .reset_index()
+    )
+    quarterly_activity = (
+        quarterly_actual.groupby("article_key", dropna=False)
+        .agg(total_quarters_with_pi=("quarter_period", "nunique"))
+        .reset_index()
+    )
+
+    monthly_agg = (
+        monthly_full.groupby("article_key", dropna=False)
+        .agg(
+            lineas_media_mensual=("lineas_pi_mes", "mean"),
+            cantidad_media_mensual=("cantidad_pi_mes", "mean"),
+            lineas_max_mes=("lineas_pi_mes", "max"),
+            cantidad_max_mes=("cantidad_pi_mes", "max"),
+        )
+        .reset_index()
+    )
+
+    month_profile = (
+        monthly_full.groupby(["article_key", "month"], dropna=False)
+        .agg(
+            lineas_mes_media=("lineas_pi_mes", "mean"),
+            cantidad_mes_media=("cantidad_pi_mes", "mean"),
+            lineas_mes_total=("lineas_pi_mes", "sum"),
+            cantidad_mes_total=("cantidad_pi_mes", "sum"),
+            years_activo_mes=("lineas_pi_mes", lambda s: int((s > 0).sum())),
+        )
+        .reset_index()
+    )
+    quarter_profile = (
+        quarterly_full.groupby(["article_key", "quarter"], dropna=False)
+        .agg(
+            lineas_trimestre_media=("lineas_pi_trimestre", "mean"),
+            cantidad_trimestre_media=("cantidad_pi_trimestre", "mean"),
+            lineas_trimestre_total=("lineas_pi_trimestre", "sum"),
+            cantidad_trimestre_total=("cantidad_pi_trimestre", "sum"),
+            years_activo_trimestre=("lineas_pi_trimestre", lambda s: int((s > 0).sum())),
+        )
+        .reset_index()
+    )
+
+    lineas_media_lookup = monthly_agg.set_index("article_key")["lineas_media_mensual"]
+    monthly_full["indice_vs_media"] = safe_divide(
+        monthly_full["lineas_pi_mes"],
+        monthly_full["article_key"].map(lineas_media_lookup),
+    ).fillna(0)
+    lineas_media_quarter_lookup = (
+        quarterly_full.groupby("article_key", dropna=False)["lineas_pi_trimestre"].mean()
+    )
+    quarterly_full["indice_vs_media"] = safe_divide(
+        quarterly_full["lineas_pi_trimestre"],
+        quarterly_full["article_key"].map(lineas_media_quarter_lookup),
+    ).fillna(0)
+
+    summary = article_base.merge(hist, how="left", on="article_key")
+    summary = summary.merge(monthly_activity, how="left", on="article_key")
+    summary = summary.merge(quarterly_activity, how="left", on="article_key")
+    summary = summary.merge(monthly_agg, how="left", on="article_key")
+
+    quarter_agg = (
+        quarterly_full.groupby("article_key", dropna=False)
+        .agg(
+            lineas_pi_trimestre_media=("lineas_pi_trimestre", "mean"),
+            cantidad_pi_trimestre_media=("cantidad_pi_trimestre", "mean"),
+        )
+        .reset_index()
+    )
+    summary = summary.merge(quarter_agg, how="left", on="article_key")
+
+    summary["total_months_with_pi"] = pd.to_numeric(summary["total_months_with_pi"], errors="coerce").fillna(0).astype(int)
+    summary["total_quarters_with_pi"] = pd.to_numeric(summary["total_quarters_with_pi"], errors="coerce").fillna(0).astype(int)
+    summary["total_lineas_pi_historico"] = pd.to_numeric(summary["total_lineas_pi_historico"], errors="coerce").fillna(0)
+    summary["total_cantidad_pi_historico"] = pd.to_numeric(summary["total_cantidad_pi_historico"], errors="coerce").fillna(0)
+    summary["years_with_activity"] = pd.to_numeric(summary["years_with_activity"], errors="coerce").fillna(0).astype(int)
+    summary["lineas_media_mensual"] = pd.to_numeric(summary["lineas_media_mensual"], errors="coerce").fillna(0)
+    summary["cantidad_media_mensual"] = pd.to_numeric(summary["cantidad_media_mensual"], errors="coerce").fillna(0)
+    summary["lineas_max_mes"] = pd.to_numeric(summary["lineas_max_mes"], errors="coerce").fillna(0)
+    summary["cantidad_max_mes"] = pd.to_numeric(summary["cantidad_max_mes"], errors="coerce").fillna(0)
+    summary["lineas_pi_trimestre_media"] = pd.to_numeric(summary["lineas_pi_trimestre_media"], errors="coerce").fillna(0)
+    summary["cantidad_pi_trimestre_media"] = pd.to_numeric(summary["cantidad_pi_trimestre_media"], errors="coerce").fillna(0)
+
+    month_peak = month_profile.sort_values(["article_key", "lineas_mes_media", "cantidad_mes_media"], ascending=[True, False, False])
+    month_peak = month_peak.groupby("article_key", dropna=False).head(1)[["article_key", "month"]].rename(columns={"month": "mes_pico_lineas"})
+    month_peak_qty = month_profile.sort_values(["article_key", "cantidad_mes_media", "lineas_mes_media"], ascending=[True, False, False])
+    month_peak_qty = month_peak_qty.groupby("article_key", dropna=False).head(1)[["article_key", "month"]].rename(columns={"month": "mes_pico_cantidad"})
+    quarter_peak = quarter_profile.sort_values(["article_key", "lineas_trimestre_media"], ascending=[True, False])
+    quarter_peak = quarter_peak.groupby("article_key", dropna=False).head(1)[["article_key", "quarter"]].rename(columns={"quarter": "quarter_peak"})
+    summary = summary.merge(month_peak, how="left", on="article_key").merge(month_peak_qty, how="left", on="article_key").merge(quarter_peak, how="left", on="article_key")
+
+    top_month_concentration = (
+        month_profile.sort_values(["article_key", "lineas_mes_total"], ascending=[True, False])
+        .groupby("article_key", dropna=False)["lineas_mes_total"]
+        .agg(
+            top1=lambda s: float(s.head(1).sum()),
+            top2=lambda s: float(s.head(2).sum()),
+        )
+        .reset_index()
+    )
+    top_quarter_concentration = (
+        quarter_profile.sort_values(["article_key", "lineas_trimestre_total"], ascending=[True, False])
+        .groupby("article_key", dropna=False)["lineas_trimestre_total"]
+        .agg(
+            top1=lambda s: float(s.head(1).sum()),
+            top2=lambda s: float(s.head(2).sum()),
+        )
+        .reset_index()
+    )
+    summary = summary.merge(top_month_concentration, how="left", on="article_key").merge(
+        top_quarter_concentration, how="left", on="article_key", suffixes=("_mes", "_trimestre")
+    )
+    summary["porcentaje_concentracion_top_1_mes"] = safe_divide(summary["top1_mes"], summary["total_lineas_pi_historico"]).fillna(0)
+    summary["porcentaje_concentracion_top_2_meses"] = safe_divide(summary["top2_mes"], summary["total_lineas_pi_historico"]).fillna(0)
+    summary["porcentaje_concentracion_top_1_trimestre"] = safe_divide(summary["top1_trimestre"], summary["total_lineas_pi_historico"]).fillna(0)
+    summary["porcentaje_concentracion_top_2_trimestres"] = safe_divide(summary["top2_trimestre"], summary["total_lineas_pi_historico"]).fillna(0)
+    summary["porcentaje_concentracion_top_trimestre"] = summary["porcentaje_concentracion_top_1_trimestre"]
+    peak_month_mean = (
+        month_profile.groupby("article_key", dropna=False)["lineas_mes_media"]
+        .max()
+        .reset_index(name="peak_month_mean")
+    )
+    peak_quarter_mean = (
+        quarter_profile.groupby("article_key", dropna=False)["lineas_trimestre_media"]
+        .max()
+        .reset_index(name="peak_quarter_mean")
+    )
+    summary = summary.merge(peak_month_mean, how="left", on="article_key").merge(
+        peak_quarter_mean, how="left", on="article_key"
+    )
+    summary["seasonality_index_monthly"] = safe_divide(summary["peak_month_mean"], summary["lineas_media_mensual"]).fillna(0)
+    summary["seasonality_index_quarterly"] = safe_divide(
+        summary["peak_quarter_mean"],
+        summary["lineas_pi_trimestre_media"],
+    ).fillna(0)
+
+    summary["mes_pico_lineas"] = summary["mes_pico_lineas"].map(lambda value: MONTH_NAMES_ES.get(int(value)) if pd.notna(value) else None)
+    summary["mes_pico_cantidad"] = summary["mes_pico_cantidad"].map(lambda value: MONTH_NAMES_ES.get(int(value)) if pd.notna(value) else None)
+    summary["quarter_peak"] = summary["quarter_peak"].map(lambda value: quarter_label(int(value)) if pd.notna(value) else None)
+
+    peak_month_candidates = month_profile.merge(
+        summary[["article_key", "years_with_activity", "lineas_media_mensual"]],
+        how="left",
+        on="article_key",
+    )
+    peak_month_candidates["recurrence_ratio"] = safe_divide(
+        peak_month_candidates["years_activo_mes"],
+        peak_month_candidates["years_with_activity"],
+    ).fillna(0)
+    peak_month_candidates["es_mes_pico"] = (
+        (peak_month_candidates["lineas_mes_media"] >= peak_month_candidates["lineas_media_mensual"] * 1.25)
+        & (peak_month_candidates["recurrence_ratio"] >= 0.5)
+        & (peak_month_candidates["lineas_mes_total"] > 0)
+    )
+    month_peaks = (
+        peak_month_candidates[peak_month_candidates["es_mes_pico"]]
+        .groupby("article_key", dropna=False)
+        .agg(
+            peak_months=("month", lambda s: sorted({int(value) for value in s})),
+            monthly_peak_recurrence=("recurrence_ratio", "mean"),
+        )
+        .reset_index()
+    )
+
+    peak_quarter_candidates = quarter_profile.merge(
+        summary[["article_key", "years_with_activity", "lineas_pi_trimestre_media"]],
+        how="left",
+        on="article_key",
+    )
+    peak_quarter_candidates["recurrence_ratio"] = safe_divide(
+        peak_quarter_candidates["years_activo_trimestre"],
+        peak_quarter_candidates["years_with_activity"],
+    ).fillna(0)
+    peak_quarter_candidates["es_trimestre_pico"] = (
+        (peak_quarter_candidates["lineas_trimestre_media"] >= peak_quarter_candidates["lineas_pi_trimestre_media"] * 1.20)
+        & (peak_quarter_candidates["recurrence_ratio"] >= 0.5)
+        & (peak_quarter_candidates["lineas_trimestre_total"] > 0)
+    )
+    quarter_peaks = (
+        peak_quarter_candidates[peak_quarter_candidates["es_trimestre_pico"]]
+        .groupby("article_key", dropna=False)
+        .agg(
+            peak_quarters=("quarter", lambda s: sorted({int(value) for value in s})),
+            quarterly_peak_recurrence=("recurrence_ratio", "mean"),
+        )
+        .reset_index()
+    )
+
+    summary = summary.merge(month_peaks, how="left", on="article_key").merge(quarter_peaks, how="left", on="article_key")
+    summary["peak_months"] = summary["peak_months"].apply(lambda value: value if isinstance(value, list) else [])
+    summary["peak_quarters"] = summary["peak_quarters"].apply(lambda value: value if isinstance(value, list) else [])
+    summary["monthly_peak_recurrence"] = pd.to_numeric(summary["monthly_peak_recurrence"], errors="coerce").fillna(0)
+    summary["quarterly_peak_recurrence"] = pd.to_numeric(summary["quarterly_peak_recurrence"], errors="coerce").fillna(0)
+    summary["recurrencia_estacional"] = summary[["monthly_peak_recurrence", "quarterly_peak_recurrence"]].max(axis=1)
+    summary["meses_pico_recurrentes"] = summary["peak_months"].apply(month_name_list)
+    summary["trimestres_pico_recurrentes"] = summary["peak_quarters"].apply(quarter_name_list)
+
+    monthly_full = monthly_full.merge(
+        summary[["article_key", "peak_months", "lineas_media_mensual"]],
+        how="left",
+        on="article_key",
+    )
+    monthly_full["es_mes_pico"] = monthly_full.apply(
+        lambda row: int(row["month"]) in (row["peak_months"] if isinstance(row["peak_months"], list) else []),
+        axis=1,
+    )
+    monthly_full = add_metadata_columns(monthly_full.drop(columns=["peak_months", "month_period"]), snapshot_date, generated_at)
+    monthly_full = monthly_full[
+        [
+            "snapshot_date",
+            "generated_at",
+            "id_article",
+            "articulo",
+            "article_key",
+            "descripcion",
+            "year",
+            "month",
+            "period_label",
+            "lineas_pi_mes",
+            "cantidad_pi_mes",
+            "indice_vs_media",
+            "es_mes_pico",
+        ]
+    ]
+
+    quarterly_full = quarterly_full.merge(
+        summary[["article_key", "peak_quarters", "lineas_pi_trimestre_media"]],
+        how="left",
+        on="article_key",
+    )
+    quarterly_full["es_trimestre_pico"] = quarterly_full.apply(
+        lambda row: int(row["quarter"]) in (row["peak_quarters"] if isinstance(row["peak_quarters"], list) else []),
+        axis=1,
+    )
+    quarterly_full = add_metadata_columns(quarterly_full.drop(columns=["peak_quarters", "quarter_period"]), snapshot_date, generated_at)
+    quarterly_full = quarterly_full[
+        [
+            "snapshot_date",
+            "generated_at",
+            "id_article",
+            "articulo",
+            "article_key",
+            "descripcion",
+            "year",
+            "quarter",
+            "period_label",
+            "lineas_pi_trimestre",
+            "cantidad_pi_trimestre",
+            "indice_vs_media",
+            "es_trimestre_pico",
+        ]
+    ]
+
+    first_period = summary["first_pi_date"].dt.to_period("M")
+    summary["months_observed"] = first_period.map(
+        lambda start: ((snapshot_date.year - start.year) * 12 + snapshot_date.month - start.month + 1) if pd.notna(start) else 0
+    )
+    summary["months_observed"] = pd.to_numeric(summary["months_observed"], errors="coerce").fillna(0)
+    summary["ADI"] = safe_divide(summary["months_observed"], summary["total_months_with_pi"]).fillna(0)
+
+    non_zero_monthly = monthly_full[monthly_full["lineas_pi_mes"] > 0].copy()
+    cv2 = (
+        non_zero_monthly.groupby("article_key", dropna=False)["lineas_pi_mes"]
+        .agg(lambda s: float((s.std(ddof=0) / s.mean()) ** 2) if len(s) > 1 and s.mean() else 0.0)
+        .reset_index(name="CV2")
+    )
+    summary = summary.merge(cv2, how="left", on="article_key")
+    summary["CV2"] = pd.to_numeric(summary["CV2"], errors="coerce").fillna(0)
+
+    summary["peak_period_upcoming"], summary["months_to_next_peak"] = zip(
+        *summary["peak_months"].apply(lambda peaks: compute_next_peak_month(snapshot_date.month, peaks))
+    )
+    summary["next_peak_quarter"], summary["quarters_to_next_peak"] = zip(
+        *summary["peak_quarters"].apply(lambda peaks: compute_next_peak_quarter(snapshot_date.quarter, peaks))
+    )
+
+    insufficient_history = (summary["total_lineas_pi_historico"] == 0) | (summary["months_observed"] < 6) | (summary["total_months_with_pi"] < 3)
+    dormant_signal = (
+        summary["last_pi_date"].isna()
+        | (days_since(snapshot_date, summary["last_pi_date"]).fillna(9999) > 365)
+    ) & (summary["total_months_with_pi"] <= 6)
+    estacional_signal = (
+        (summary["years_with_activity"] >= 2)
+        & (
+            (
+                (summary["seasonality_index_monthly"] >= 1.6)
+                & (summary["porcentaje_concentracion_top_2_meses"] >= 0.55)
+                & (summary["monthly_peak_recurrence"] >= 0.5)
+            )
+            | (
+                (summary["seasonality_index_quarterly"] >= 1.4)
+                & (summary["porcentaje_concentracion_top_1_trimestre"] >= 0.45)
+                & (summary["quarterly_peak_recurrence"] >= 0.5)
+            )
+        )
+        & ~dormant_signal
+    )
+
+    summary["temporalidad_clase"] = "Regular"
+    summary.loc[insufficient_history, "temporalidad_clase"] = "Nuevo / sin histórico suficiente"
+    summary.loc[~insufficient_history & dormant_signal, "temporalidad_clase"] = "Dormido"
+    summary.loc[~insufficient_history & ~dormant_signal & estacional_signal, "temporalidad_clase"] = "Estacional"
+    summary.loc[
+        ~insufficient_history & ~dormant_signal & ~estacional_signal & (summary["ADI"] >= 1.32) & (summary["CV2"] < 0.49),
+        "temporalidad_clase",
+    ] = "Intermitente"
+    summary.loc[
+        ~insufficient_history & ~dormant_signal & ~estacional_signal & (summary["CV2"] >= 0.49),
+        "temporalidad_clase",
+    ] = "Errático"
+
+    summary["es_estacional"] = summary["temporalidad_clase"].eq("Estacional")
+    summary["es_dormido"] = summary["temporalidad_clase"].eq("Dormido")
+    summary["es_intermitente"] = summary["temporalidad_clase"].eq("Intermitente")
+    summary["es_erratico"] = summary["temporalidad_clase"].eq("Errático")
+    summary["warning_rotacion_baja_pero_estacional"] = (
+        summary["es_estacional"]
+        & summary["rotacion_final_ytd"].isin(["C", "D", "Sin rotación, recién llegado"])
+    )
+    summary["warning_stock_dormido_real"] = summary["es_dormido"] & (summary["stock_actual_total"] > 0) & summary["inactivo_90d"].eq("Sí")
+
+    low_rotation_ytd = summary["rotacion_final_ytd"].isin(["C", "D", "Sin rotación, recién llegado"])
+    low_rotation_30d = summary["rotacion_final_30d"].isin(["C", "D", "Sin rotación 30d, recién llegado"])
+    no_recent = summary["inactivo_90d"].eq("Sí")
+    overstock = summary["flag_sobrestock"].eq("Sí") | (summary["cobertura_lineas_30d"].fillna(0) >= 12)
+    no_peak_soon = summary["months_to_next_peak"].fillna(99) > 2
+    high_risk_move = summary["es_estacional"] | summary["warning_rotacion_baja_pero_estacional"] | summary["rotacion_final_30d"].isin(["A", "B"])
+
+    summary["riesgo_mover_almacen"] = "Medio"
+    summary.loc[summary["es_dormido"] & no_peak_soon, "riesgo_mover_almacen"] = "Bajo"
+    summary.loc[high_risk_move | summary["temporalidad_clase"].eq("Regular"), "riesgo_mover_almacen"] = "Alto"
+
+    summary["accion_recomendada"] = "Revisar manualmente"
+    summary.loc[
+        summary["rotacion_final_30d"].isin(["A", "B"]) | summary["rotacion_final_ytd"].isin(["A", "B"]) | (summary["months_to_next_peak"].fillna(99) <= 2),
+        "accion_recomendada",
+    ] = "Mantener en almacén principal"
+    summary.loc[
+        summary["es_estacional"] & low_rotation_ytd & low_rotation_30d & no_peak_soon,
+        "accion_recomendada",
+    ] = "Mover solo fuera de temporada"
+    summary.loc[
+        ~summary["es_estacional"] & low_rotation_ytd & low_rotation_30d & overstock & no_recent & (summary["recurrencia_estacional"] < 0.4),
+        "accion_recomendada",
+    ] = "Mover a almacén secundario"
+    summary.loc[
+        summary["temporalidad_clase"].isin(["Nuevo / sin histórico suficiente", "Errático"]),
+        "accion_recomendada",
+    ] = "Revisar manualmente"
+
+    summary["motivo_recomendacion"] = "Patrón ambiguo o poco robusto; conviene contraste manual."
+    summary.loc[
+        summary["accion_recomendada"].eq("Mantener en almacén principal"),
+        "motivo_recomendacion",
+    ] = "Actividad actual relevante o pico próximo esperado; moverlo ahora aumenta riesgo operativo."
+    summary.loc[
+        summary["accion_recomendada"].eq("Mover solo fuera de temporada"),
+        "motivo_recomendacion",
+    ] = "SKU estacional con rotación baja fuera de temporada y recurrencia suficiente para planificar su retorno antes del pico."
+    summary.loc[
+        summary["accion_recomendada"].eq("Mover a almacén secundario"),
+        "motivo_recomendacion",
+    ] = "Baja rotación actual, sin actividad reciente ni patrón estacional fuerte, con señales de sobrestock o cobertura alta."
+
+    summary["ventana_reubicacion_recomendada"] = "Revisión manual en próximo ciclo mensual"
+    summary.loc[
+        summary["accion_recomendada"].eq("Mantener en almacén principal"),
+        "ventana_reubicacion_recomendada",
+    ] = "Sin traslado recomendado"
+    summary.loc[
+        summary["accion_recomendada"].eq("Mover a almacén secundario"),
+        "ventana_reubicacion_recomendada",
+    ] = "Traslado viable de inmediato"
+    summary.loc[
+        summary["accion_recomendada"].eq("Mover solo fuera de temporada"),
+        "ventana_reubicacion_recomendada",
+    ] = summary["peak_period_upcoming"].fillna(summary["next_peak_quarter"]).map(
+        lambda value: f"Fuera de temporada; reponer 1-2 meses antes de {value}" if pd.notna(value) else "Fuera de temporada; revisar antes del siguiente pico"
+    )
+
+    summary["prioridad_revision"] = "Media"
+    summary.loc[summary["riesgo_mover_almacen"].eq("Alto"), "prioridad_revision"] = "Alta"
+    summary.loc[summary["riesgo_mover_almacen"].eq("Bajo"), "prioridad_revision"] = "Baja"
+
+    summary["es_candidato_mover"] = summary["accion_recomendada"].eq("Mover a almacén secundario")
+    summary["es_candidato_mover_fuera_temporada"] = summary["accion_recomendada"].eq("Mover solo fuera de temporada")
+    summary["es_candidato_mantener"] = summary["accion_recomendada"].eq("Mantener en almacén principal")
+
+    temporality_article = add_metadata_columns(summary.copy(), snapshot_date, generated_at)
+    temporality_article = temporality_article[
+        [
+            "snapshot_date",
+            "generated_at",
+            "id_article",
+            "articulo",
+            "article_key",
+            "descripcion",
+            "first_pi_date",
+            "last_pi_date",
+            "years_with_activity",
+            "total_months_with_pi",
+            "total_quarters_with_pi",
+            "total_lineas_pi_historico",
+            "total_cantidad_pi_historico",
+            "lineas_media_mensual",
+            "cantidad_media_mensual",
+            "lineas_max_mes",
+            "cantidad_max_mes",
+            "mes_pico_lineas",
+            "mes_pico_cantidad",
+            "lineas_pi_trimestre_media",
+            "cantidad_pi_trimestre_media",
+            "quarter_peak",
+            "porcentaje_concentracion_top_trimestre",
+            "porcentaje_concentracion_top_1_mes",
+            "porcentaje_concentracion_top_2_meses",
+            "porcentaje_concentracion_top_1_trimestre",
+            "porcentaje_concentracion_top_2_trimestres",
+            "seasonality_index_monthly",
+            "seasonality_index_quarterly",
+            "recurrencia_estacional",
+            "meses_pico_recurrentes",
+            "trimestres_pico_recurrentes",
+            "ADI",
+            "CV2",
+            "temporalidad_clase",
+            "es_estacional",
+            "es_dormido",
+            "es_intermitente",
+            "es_erratico",
+            "peak_period_upcoming",
+            "months_to_next_peak",
+            "warning_rotacion_baja_pero_estacional",
+            "warning_stock_dormido_real",
+        ]
+    ]
+
+    decision_article = add_metadata_columns(summary.copy(), snapshot_date, generated_at)
+    decision_article = decision_article[
+        [
+            "snapshot_date",
+            "generated_at",
+            "id_article",
+            "articulo",
+            "article_key",
+            "descripcion",
+            "rotacion_final_ytd",
+            "rotacion_final_30d",
+            "stock_actual_total",
+            "cobertura_lineas_30d",
+            "cobertura_cantidad_30d",
+            "inactivo_30d",
+            "inactivo_90d",
+            "total_lineas_pi_historico",
+            "years_with_activity",
+            "temporalidad_clase",
+            "seasonality_index_quarterly",
+            "recurrencia_estacional",
+            "riesgo_mover_almacen",
+            "accion_recomendada",
+            "motivo_recomendacion",
+            "ventana_reubicacion_recomendada",
+            "prioridad_revision",
+            "es_estacional",
+            "es_dormido",
+            "es_intermitente",
+            "es_erratico",
+            "es_candidato_mover",
+            "es_candidato_mover_fuera_temporada",
+            "es_candidato_mantener",
+            "peak_period_upcoming",
+            "months_to_next_peak",
+            "warning_rotacion_baja_pero_estacional",
+            "warning_stock_dormido_real",
+        ]
+    ].rename(columns={"total_lineas_pi_historico": "lineas_pi_historico"})
+
+    top_estacionales = temporality_article[temporality_article["temporalidad_clase"] == "Estacional"].sort_values(
+        ["recurrencia_estacional", "seasonality_index_quarterly"],
+        ascending=[False, False],
+    ).head(10)
+    top_dormidos = decision_article[decision_article["warning_stock_dormido_real"]].sort_values(
+        ["stock_actual_total", "lineas_pi_historico"],
+        ascending=[False, True],
+    ).head(10)
+    top_riesgo = decision_article[decision_article["riesgo_mover_almacen"] == "Alto"].sort_values(
+        ["months_to_next_peak", "stock_actual_total"],
+        ascending=[True, False],
+    ).head(10)
+
+    temporality_json = {
+        "snapshot_date": snapshot_date.strftime("%Y-%m-%d"),
+        "generated_at": generated_at,
+        "numero_articulos_regulares": int((temporality_article["temporalidad_clase"] == "Regular").sum()),
+        "numero_articulos_estacionales": int((temporality_article["temporalidad_clase"] == "Estacional").sum()),
+        "numero_articulos_intermitentes": int((temporality_article["temporalidad_clase"] == "Intermitente").sum()),
+        "numero_articulos_dormidos": int((temporality_article["temporalidad_clase"] == "Dormido").sum()),
+        "numero_candidatos_mover": int(decision_article["es_candidato_mover"].sum()),
+        "numero_candidatos_mantener": int(decision_article["es_candidato_mantener"].sum()),
+        "numero_candidatos_mover_fuera_temporada": int(decision_article["es_candidato_mover_fuera_temporada"].sum()),
+        "top_estacionales": json.loads(
+            top_estacionales[
+                ["articulo", "descripcion", "recurrencia_estacional", "seasonality_index_quarterly", "peak_period_upcoming"]
+            ].to_json(orient="records", force_ascii=False)
+        ),
+        "top_dormidos": json.loads(
+            top_dormidos[
+                ["articulo", "descripcion", "stock_actual_total", "accion_recomendada", "warning_stock_dormido_real"]
+            ].to_json(orient="records", force_ascii=False)
+        ),
+        "top_riesgo_mala_decision_si_se_mueven": json.loads(
+            top_riesgo[
+                ["articulo", "descripcion", "riesgo_mover_almacen", "accion_recomendada", "peak_period_upcoming", "months_to_next_peak"]
+            ].to_json(orient="records", force_ascii=False)
+        ),
+        "proximos_meses_pico_detectados": sorted(
+            {value for value in temporality_article["peak_period_upcoming"].dropna().tolist() if value}
+        ),
+        "proximos_trimestres_pico_detectados": sorted(
+            {value for value in summary["next_peak_quarter"].dropna().tolist() if value}
+        ),
+    }
+
+    temporality_datasets = {
+        "stock_abc_temporalidad_article": temporality_article,
+        "stock_abc_temporalidad_monthly_article": monthly_full,
+        "stock_abc_temporalidad_quarterly_article": quarterly_full,
+        "stock_abc_decision_almacen_article": decision_article,
+    }
+    return temporality_datasets, temporality_json, build_temporality_criteria_sheet(snapshot_date)
+
+
 def build_audit_excel(
     detail_stock: pd.DataFrame,
     summary_current: pd.DataFrame,
@@ -1705,6 +2459,11 @@ def build_audit_excel(
     summary_article: pd.DataFrame,
     summary_30d: pd.DataFrame,
     summary_quarterly: pd.DataFrame,
+    temporality_article: pd.DataFrame,
+    temporality_monthly: pd.DataFrame,
+    temporality_quarterly: pd.DataFrame,
+    decision_article: pd.DataFrame,
+    temporalidad_criteria: pd.DataFrame,
 ) -> None:
     owner_quarterly_audit = owner_quarterly.rename(
         columns={
@@ -1733,11 +2492,18 @@ def build_audit_excel(
         summary_article.to_excel(writer, sheet_name="Resumen articulo unico", index=False)
         summary_30d.to_excel(writer, sheet_name="Resumen 30d", index=False)
         summary_quarterly.to_excel(writer, sheet_name="Resumen trimestral", index=False)
+        temporality_article.to_excel(writer, sheet_name="Temporalidad articulo", index=False)
+        temporality_monthly.to_excel(writer, sheet_name="Temporalidad mensual articulo", index=False)
+        temporality_quarterly.to_excel(writer, sheet_name="Temporalidad trim articulo", index=False)
+        decision_article.to_excel(writer, sheet_name="Decision almacen articulo", index=False)
+        temporalidad_criteria.to_excel(writer, sheet_name="Criterios temporalidad", index=False)
 
 
 def save_outputs(
     datasets: dict[str, pd.DataFrame],
     kpis: dict[str, object],
+    temporality_datasets: dict[str, pd.DataFrame],
+    temporality_kpis: dict[str, object],
     detail_stock: pd.DataFrame,
     summary_current: pd.DataFrame,
     criteria: pd.DataFrame,
@@ -1750,14 +2516,19 @@ def save_outputs(
     summary_article: pd.DataFrame,
     summary_30d: pd.DataFrame,
     summary_quarterly: pd.DataFrame,
+    temporalidad_criteria: pd.DataFrame,
 ) -> None:
     ensure_output_dirs()
 
     for dataset_name, frame in datasets.items():
         frame.to_parquet(PARQUET_DIR / f"{dataset_name}.parquet", index=False)
+    for dataset_name, frame in temporality_datasets.items():
+        frame.to_parquet(PARQUET_DIR / f"{dataset_name}.parquet", index=False)
 
     with (JSON_DIR / "stock_abc_resumen_kpis.json").open("w", encoding="utf-8", newline="\n") as handle:
         json.dump(kpis, handle, ensure_ascii=False, indent=2)
+    with (JSON_DIR / "stock_abc_resumen_temporalidad.json").open("w", encoding="utf-8", newline="\n") as handle:
+        json.dump(temporality_kpis, handle, ensure_ascii=False, indent=2)
 
     build_audit_excel(
         detail_stock,
@@ -1772,6 +2543,11 @@ def save_outputs(
         summary_article,
         summary_30d,
         summary_quarterly,
+        temporality_datasets["stock_abc_temporalidad_article"],
+        temporality_datasets["stock_abc_temporalidad_monthly_article"],
+        temporality_datasets["stock_abc_temporalidad_quarterly_article"],
+        temporality_datasets["stock_abc_decision_almacen_article"],
+        temporalidad_criteria,
     )
 
 
@@ -1825,10 +2601,18 @@ def main() -> None:
         snapshot_date,
         generated_at,
     )
+    temporality_datasets, temporality_kpis, temporalidad_criteria = build_temporality_outputs(
+        movements,
+        datasets["stock_abc_actual_article"],
+        snapshot_date,
+        generated_at,
+    )
 
     save_outputs(
         datasets,
         kpis,
+        temporality_datasets,
+        temporality_kpis,
         detail_stock,
         summary_current,
         criteria,
@@ -1841,10 +2625,12 @@ def main() -> None:
         summary_article,
         summary_30d,
         summary_quarterly,
+        temporalidad_criteria,
     )
 
     print(f"Datasets Parquet generados en: {PARQUET_DIR}")
     print(f"JSON KPI generado en: {JSON_DIR / 'stock_abc_resumen_kpis.json'}")
+    print(f"JSON temporalidad generado en: {JSON_DIR / 'stock_abc_resumen_temporalidad.json'}")
     print(f"Excel de auditoría generado en: {AUDIT_FILE}")
     print(f"Fichero de stock usado: {stock_file.name}")
     print(f"Fecha foto de stock: {snapshot_date.date()}")

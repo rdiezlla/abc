@@ -1,0 +1,257 @@
+{
+  "snapshot_date": "2026-03-31",
+  "generated_at": "2026-04-01 11:22:31",
+  "numero_articulos_regulares": 4,
+  "numero_articulos_estacionales": 351,
+  "numero_articulos_intermitentes": 233,
+  "numero_articulos_dormidos": 520,
+  "numero_candidatos_mover": 6,
+  "numero_candidatos_mantener": 689,
+  "numero_candidatos_mover_fuera_temporada": 147,
+  "top_estacionales": [
+    {
+      "articulo": "132016",
+      "descripcion": "PORTERÍA FÚTBOL7",
+      "recurrencia_estacional": 1.0,
+      "seasonality_index_quarterly": 3.8958333333,
+      "peak_period_upcoming": "Mayo"
+    },
+    {
+      "articulo": "204050",
+      "descripcion": "BASE SOMBRILLA GRIS \"NUEVA\" 1/3",
+      "recurrencia_estacional": 1.0,
+      "seasonality_index_quarterly": 3.3055555556,
+      "peak_period_upcoming": "Abril"
+    },
+    {
+      "articulo": "131131",
+      "descripcion": "MAPA BARRIOS DE MADRID LETRAS Y RETIRO",
+      "recurrencia_estacional": 1.0,
+      "seasonality_index_quarterly": 3.3055555556,
+      "peak_period_upcoming": "Mayo"
+    },
+    {
+      "articulo": "152022",
+      "descripcion": "BAÚL PLÁSTICO NEGRO",
+      "recurrencia_estacional": 1.0,
+      "seasonality_index_quarterly": 3.2692307692,
+      "peak_period_upcoming": "Mayo"
+    },
+    {
+      "articulo": "014926",
+      "descripcion": "CERVEZA 25CL ALHAMBRA ESPECIAL SIN PACK",
+      "recurrencia_estacional": 1.0,
+      "seasonality_index_quarterly": 3.1875,
+      "peak_period_upcoming": "Marzo"
+    },
+    {
+      "articulo": "091006",
+      "descripcion": "BARRA MADERA  FUNDACIÓN LOGO MAHOU",
+      "recurrencia_estacional": 1.0,
+      "seasonality_index_quarterly": 3.0909090909,
+      "peak_period_upcoming": "Noviembre"
+    },
+    {
+      "articulo": "041028",
+      "descripcion": "ESTANTERÍA DORADA 200X35X105 SAN MIGUEL",
+      "recurrencia_estacional": 1.0,
+      "seasonality_index_quarterly": 3.0909090909,
+      "peak_period_upcoming": "Abril"
+    },
+    {
+      "articulo": "014009",
+      "descripcion": "CERVEZA 33CL MAHOU SIN GLUTEN PACK CESTA",
+      "recurrencia_estacional": 1.0,
+      "seasonality_index_quarterly": 3.06,
+      "peak_period_upcoming": "Junio"
+    },
+    {
+      "articulo": "202010",
+      "descripcion": "SOMBRILLA ECO BEIGE HOJA DESDE1890MAHOU",
+      "recurrencia_estacional": 1.0,
+      "seasonality_index_quarterly": 3.0357142857,
+      "peak_period_upcoming": "Mayo"
+    },
+    {
+      "articulo": "131135",
+      "descripcion": "MAPA BARRIOS DE MADRID MALASAÑA",
+      "recurrencia_estacional": 1.0,
+      "seasonality_index_quarterly": 2.975,
+      "peak_period_upcoming": "Mayo"
+    }
+  ],
+  "top_dormidos": [
+    {
+      "articulo": "072098",
+      "descripcion": "VASO CUSQUEÑA 33CL",
+      "stock_actual_total": 4200.0,
+      "accion_recomendada": "Mantener en almacén principal",
+      "warning_stock_dormido_real": true
+    },
+    {
+      "articulo": "074030",
+      "descripcion": "JARRA CRISTAL 1,1L ICON OKTOBERFEST 2021",
+      "stock_actual_total": 2829.0,
+      "accion_recomendada": "Revisar manualmente",
+      "warning_stock_dormido_real": true
+    },
+    {
+      "articulo": "061029",
+      "descripcion": "COPA 33CL LOGO NEGRO CASIMIRO TRIGO M2",
+      "stock_actual_total": 2511.0,
+      "accion_recomendada": "Mantener en almacén principal",
+      "warning_stock_dormido_real": true
+    },
+    {
+      "articulo": "074031",
+      "descripcion": "JARRA CRISTAL 0.5L ICON OKTOBERFEST 2021",
+      "stock_actual_total": 1718.0,
+      "accion_recomendada": "Revisar manualmente",
+      "warning_stock_dormido_real": true
+    },
+    {
+      "articulo": "074037",
+      "descripcion": "JARRA 0.5L SPATEN MUNCHEN",
+      "stock_actual_total": 1706.0,
+      "accion_recomendada": "Revisar manualmente",
+      "warning_stock_dormido_real": true
+    },
+    {
+      "articulo": "202073",
+      "descripcion": "SOMBRILLA DE PLAYA SAN MIGUEL VERDE CON",
+      "stock_actual_total": 1131.0,
+      "accion_recomendada": "Revisar manualmente",
+      "warning_stock_dormido_real": true
+    },
+    {
+      "articulo": "062017",
+      "descripcion": "COPA 25CL LOGO VERDE1891 SAN MIGUEL",
+      "stock_actual_total": 1105.0,
+      "accion_recomendada": "Revisar manualmente",
+      "warning_stock_dormido_real": true
+    },
+    {
+      "articulo": "065003",
+      "descripcion": "COPA 25 LOGO DORADO GRIMBERGEN",
+      "stock_actual_total": 1053.0,
+      "accion_recomendada": "Mantener en almacén principal",
+      "warning_stock_dormido_real": true
+    },
+    {
+      "articulo": "071138",
+      "descripcion": "VASO CRISTAL 29CL BENDITO",
+      "stock_actual_total": 936.0,
+      "accion_recomendada": "Revisar manualmente",
+      "warning_stock_dormido_real": true
+    },
+    {
+      "articulo": "086013",
+      "descripcion": "TABLE TENT MADERA LOS CERVECISTAS",
+      "stock_actual_total": 840.0,
+      "accion_recomendada": "Mantener en almacén principal",
+      "warning_stock_dormido_real": true
+    }
+  ],
+  "top_riesgo_mala_decision_si_se_mueven": [
+    {
+      "articulo": "018428",
+      "descripcion": "AGUA 50CL PLÁSTICO SOLAN 2025 CALCIO, MA",
+      "riesgo_mover_almacen": "Alto",
+      "accion_recomendada": "Revisar manualmente",
+      "peak_period_upcoming": "Marzo",
+      "months_to_next_peak": 0.0
+    },
+    {
+      "articulo": "014012",
+      "descripcion": "CERVEZA 33CL MAHOU TOSTADA 0,0 (2751)",
+      "riesgo_mover_almacen": "Alto",
+      "accion_recomendada": "Mantener en almacén principal",
+      "peak_period_upcoming": "Marzo",
+      "months_to_next_peak": 0.0
+    },
+    {
+      "articulo": "065089",
+      "descripcion": "COPA BRUTUS RELIEVE 2026 (6 UNIDADES POR",
+      "riesgo_mover_almacen": "Alto",
+      "accion_recomendada": "Revisar manualmente",
+      "peak_period_upcoming": "Marzo",
+      "months_to_next_peak": 0.0
+    },
+    {
+      "articulo": "011026",
+      "descripcion": "CERVEZA 33CLMAHOU IPA (3526)",
+      "riesgo_mover_almacen": "Alto",
+      "accion_recomendada": "Mantener en almacén principal",
+      "peak_period_upcoming": "Marzo",
+      "months_to_next_peak": 0.0
+    },
+    {
+      "articulo": "014926",
+      "descripcion": "CERVEZA 25CL ALHAMBRA ESPECIAL SIN PACK",
+      "riesgo_mover_almacen": "Alto",
+      "accion_recomendada": "Mantener en almacén principal",
+      "peak_period_upcoming": "Marzo",
+      "months_to_next_peak": 0.0
+    },
+    {
+      "articulo": "012085",
+      "descripcion": "CERVEZA ALHAMBRA MINI 22.5CL PACK 6UND X",
+      "riesgo_mover_almacen": "Alto",
+      "accion_recomendada": "Revisar manualmente",
+      "peak_period_upcoming": "Marzo",
+      "months_to_next_peak": 0.0
+    },
+    {
+      "articulo": "061054",
+      "descripcion": "COPA MAHOU 1890 33CL 2026 RELIEVE NUEVA(",
+      "riesgo_mover_almacen": "Alto",
+      "accion_recomendada": "Revisar manualmente",
+      "peak_period_upcoming": "Marzo",
+      "months_to_next_peak": 0.0
+    },
+    {
+      "articulo": "106009",
+      "descripcion": "GORRA GRIS LOS CERVECISTAS",
+      "riesgo_mover_almacen": "Alto",
+      "accion_recomendada": "Mantener en almacén principal",
+      "peak_period_upcoming": "Marzo",
+      "months_to_next_peak": 0.0
+    },
+    {
+      "articulo": "106348",
+      "descripcion": "GORRA ROJA Y BLANCA VIBRA MAHOU",
+      "riesgo_mover_almacen": "Alto",
+      "accion_recomendada": "Revisar manualmente",
+      "peak_period_upcoming": "Marzo",
+      "months_to_next_peak": 0.0
+    },
+    {
+      "articulo": "071173",
+      "descripcion": "VASO CRISTAL PARA CAÑA BRUTUS 25CL",
+      "riesgo_mover_almacen": "Alto",
+      "accion_recomendada": "Revisar manualmente",
+      "peak_period_upcoming": "Marzo",
+      "months_to_next_peak": 0.0
+    }
+  ],
+  "proximos_meses_pico_detectados": [
+    "Abril",
+    "Agosto",
+    "Diciembre",
+    "Enero",
+    "Febrero",
+    "Julio",
+    "Junio",
+    "Marzo",
+    "Mayo",
+    "Noviembre",
+    "Octubre",
+    "Septiembre"
+  ],
+  "proximos_trimestres_pico_detectados": [
+    "Q1",
+    "Q2",
+    "Q3",
+    "Q4"
+  ]
+}
