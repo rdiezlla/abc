@@ -145,6 +145,14 @@ def require_columns(frame: pd.DataFrame, required: list[str], dataset_name: str)
         raise ValueError(f"Faltan columnas en {dataset_name}: {missing}")
 
 
+def require_excel_columns(path: Path, frame: pd.DataFrame, required: list[str], context: str) -> None:
+    missing = [column for column in required if column not in frame.columns]
+    if missing:
+        raise ValueError(
+            f"El fichero {path.name} no contiene las columnas obligatorias para {context}: {missing}"
+        )
+
+
 def add_metadata_columns(frame: pd.DataFrame, snapshot_date: pd.Timestamp, generated_at: str) -> pd.DataFrame:
     output = frame.copy()
     output.insert(0, "generated_at", generated_at)
@@ -302,6 +310,19 @@ def aggregate_last_pi(
 
 def prepare_movements(snapshot_date: pd.Timestamp) -> pd.DataFrame:
     movements = pd.read_excel(MOVIMIENTOS_FILE)
+    require_excel_columns(
+        MOVIMIENTOS_FILE,
+        movements,
+        [
+            C.movement_type,
+            C.movement_date,
+            C.article,
+            C.article_desc,
+            C.quantity,
+            C.owner,
+        ],
+        "movimientos",
+    )
     snapshot_ts = end_of_day(snapshot_date)
 
     movements["fecha_movimiento"] = pd.to_datetime(
@@ -328,6 +349,20 @@ def prepare_movements(snapshot_date: pd.Timestamp) -> pd.DataFrame:
 
 def prepare_stock(stock_file: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
     stock = pd.read_excel(stock_file)
+    require_excel_columns(
+        stock_file,
+        stock,
+        [
+            C.stock_owner_name,
+            C.stock_owner,
+            C.stock_article,
+            C.stock_desc,
+            C.stock_qty,
+            C.stock_location,
+            C.stock_status,
+        ],
+        "stock",
+    )
     stock["owner_key"] = stock[C.stock_owner].map(normalize_key)
     stock["article_key"] = stock[C.stock_article].map(normalize_key)
     stock["stock_actual"] = pd.to_numeric(stock[C.stock_qty], errors="coerce").fillna(0)

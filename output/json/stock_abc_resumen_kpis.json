@@ -1,26 +1,26 @@
 {
   "snapshot_date": "2026-03-31",
-  "generated_at": "2026-04-01 11:22:31",
+  "generated_at": "2026-04-02 10:36:32",
   "total_referencias_owner_article": 4842,
   "total_referencias_articulo": 4400,
   "stock_total_owner_article": 466263.0,
   "stock_total_articulo": 466263.0,
-  "referencias_A_ytd": 159,
-  "referencias_B_ytd": 239,
-  "referencias_C_ytd": 104,
-  "referencias_D_ytd": 3892,
-  "referencias_recien_llegado_ytd": 6,
-  "stock_A_ytd": 167517.0,
-  "stock_B_ytd": 36145.0,
-  "stock_C_ytd": 127.0,
-  "stock_D_ytd": 262414.0,
-  "stock_recien_llegado_ytd": 60.0,
-  "referencias_A_30d": 77,
-  "referencias_B_30d": 113,
-  "referencias_C_30d": 21,
-  "referencias_D_30d": 4182,
-  "referencias_recien_llegado_30d": 7,
-  "articulos_flag_sobrestock": 909,
+  "referencias_A_ytd": 156,
+  "referencias_B_ytd": 242,
+  "referencias_C_ytd": 105,
+  "referencias_D_ytd": 3890,
+  "referencias_recien_llegado_ytd": 7,
+  "stock_A_ytd": 166523.0,
+  "stock_B_ytd": 37139.0,
+  "stock_C_ytd": 128.0,
+  "stock_D_ytd": 262382.0,
+  "stock_recien_llegado_ytd": 91.0,
+  "referencias_A_30d": 73,
+  "referencias_B_30d": 117,
+  "referencias_C_30d": 22,
+  "referencias_D_30d": 4180,
+  "referencias_recien_llegado_30d": 8,
+  "articulos_flag_sobrestock": 908,
   "articulos_flag_reubicar": 12,
   "top_10_articulos_ytd": [
     {
@@ -66,10 +66,18 @@
     {
       "articulo": "126073",
       "descripcion": "POSAVASO BRUTUS 2025",
-      "lineas_pi_ytd": 49,
-      "cantidad_pi_ytd": 9254.7,
+      "lineas_pi_ytd": 53,
+      "cantidad_pi_ytd": 10354.7,
       "rotacion_final_ytd": "A",
       "stock_actual_total": 89.0
+    },
+    {
+      "articulo": "202068",
+      "descripcion": "SOMBRILLA BLANCA CON FALDÓN NEGRO LOGO B",
+      "lineas_pi_ytd": 44,
+      "cantidad_pi_ytd": 194.0,
+      "rotacion_final_ytd": "A",
+      "stock_actual_total": 101.0
     },
     {
       "articulo": "011127",
@@ -80,12 +88,12 @@
       "stock_actual_total": 3530.0
     },
     {
-      "articulo": "202068",
-      "descripcion": "SOMBRILLA BLANCA CON FALDÓN NEGRO LOGO B",
-      "lineas_pi_ytd": 40,
-      "cantidad_pi_ytd": 180.0,
+      "articulo": "204096",
+      "descripcion": "BASE DE SOMBRILLA CON RUEDAS NEGRA EZPEL",
+      "lineas_pi_ytd": 38,
+      "cantidad_pi_ytd": 170.0,
       "rotacion_final_ytd": "A",
-      "stock_actual_total": 101.0
+      "stock_actual_total": 270.0
     },
     {
       "articulo": "016010",
@@ -94,38 +102,30 @@
       "cantidad_pi_ytd": 205.0,
       "rotacion_final_ytd": "A",
       "stock_actual_total": 220.0
-    },
-    {
-      "articulo": "014042",
-      "descripcion": "CERVEZA 33CL MAHOU SIN GLUTEN (1813) 202",
-      "lineas_pi_ytd": 35,
-      "cantidad_pi_ytd": 2568.0,
-      "rotacion_final_ytd": "A",
-      "stock_actual_total": 2256.0
     }
   ],
   "top_10_articulos_30d": [
     {
       "articulo": "126073",
       "descripcion": "POSAVASO BRUTUS 2025",
-      "lineas_pi_30d": 46,
-      "cantidad_pi_30d": 7954.7,
+      "lineas_pi_30d": 50,
+      "cantidad_pi_30d": 9054.7,
       "rotacion_final_30d": "A",
       "stock_actual_total": 89.0
     },
     {
       "articulo": "202068",
       "descripcion": "SOMBRILLA BLANCA CON FALDÓN NEGRO LOGO B",
-      "lineas_pi_30d": 40,
-      "cantidad_pi_30d": 180.0,
+      "lineas_pi_30d": 44,
+      "cantidad_pi_30d": 194.0,
       "rotacion_final_30d": "A",
       "stock_actual_total": 101.0
     },
     {
       "articulo": "204096",
       "descripcion": "BASE DE SOMBRILLA CON RUEDAS NEGRA EZPEL",
-      "lineas_pi_30d": 33,
-      "cantidad_pi_30d": 156.0,
+      "lineas_pi_30d": 38,
+      "cantidad_pi_30d": 170.0,
       "rotacion_final_30d": "A",
       "stock_actual_total": 270.0
     },
@@ -172,8 +172,8 @@
     {
       "articulo": "202069",
       "descripcion": "SOMBRILLA NEGRA LOGO BRUTUS",
-      "lineas_pi_30d": 9,
-      "cantidad_pi_30d": 29.0,
+      "lineas_pi_30d": 10,
+      "cantidad_pi_30d": 31.0,
       "rotacion_final_30d": "A",
       "stock_actual_total": 157.0
     },

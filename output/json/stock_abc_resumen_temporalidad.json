@@ -1,12 +1,12 @@
 {
   "snapshot_date": "2026-03-31",
-  "generated_at": "2026-04-01 11:22:31",
+  "generated_at": "2026-04-02 10:36:32",
   "numero_articulos_regulares": 4,
   "numero_articulos_estacionales": 351,
-  "numero_articulos_intermitentes": 233,
+  "numero_articulos_intermitentes": 232,
   "numero_articulos_dormidos": 520,
   "numero_candidatos_mover": 6,
-  "numero_candidatos_mantener": 689,
+  "numero_candidatos_mantener": 688,
   "numero_candidatos_mover_fuera_temporada": 147,
   "top_estacionales": [
     {
