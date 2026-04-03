@@ -1,6 +1,6 @@
 {
   "snapshot_date": "2026-03-31",
-  "generated_at": "2026-04-02 10:36:32",
+  "generated_at": "2026-04-03 20:36:25",
   "total_referencias_owner_article": 4842,
   "total_referencias_articulo": 4400,
   "stock_total_owner_article": 466263.0,
@@ -21,6 +21,7 @@
   "referencias_D_30d": 4180,
   "referencias_recien_llegado_30d": 8,
   "articulos_flag_sobrestock": 908,
+  "articulos_flag_stock_alto_vs_uso_reciente": 908,
   "articulos_flag_reubicar": 12,
   "top_10_articulos_ytd": [
     {

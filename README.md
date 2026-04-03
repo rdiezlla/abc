@@ -20,6 +20,32 @@ La logica principal usa:
 - `CR` como senal de entrada
 - la fecha de la foto de stock como referencia temporal del analisis
 
+## Como debe interpretarse
+
+Este modelo analiza salidas y comportamiento temporal de SKU como senal de uso operativo real.
+
+Representa bien:
+
+- rotacion por producto y por propietario
+- ABC YTD y 30d
+- historico trimestral y cambios de clase
+- temporalidad, estacionalidad, picos proximos y reactivaciones probables
+- apoyo prudente a decisiones de accesibilidad o posible reubicacion
+
+No representa de forma completa:
+
+- todo el ciclo circular de retornos
+- consumo final puro
+- una cobertura clasica de distribucion
+- una decision automatica cerrada de mover o no mover
+
+Notas practicas:
+
+- `cobertura_lineas_30d` y `cobertura_cantidad_30d` se conservan por compatibilidad, pero deben leerse como comparacion entre stock actual y salidas PI recientes
+- los aliases `indice_stock_vs_lineas_salida_30d` e `indice_stock_vs_cantidad_salida_30d` expresan esa misma idea con naming mas neutro
+- `accion_recomendada` es una orientacion operativa prudente, no una orden automatica
+- `accion_recomendada_codigo` deja una etiqueta estable y limpia para futura integracion con backend o dashboard
+
 ## Estructura del repo
 
 ```text
@@ -85,11 +111,12 @@ Instalar como minimo:
 - `pandas`
 - `openpyxl`
 - `pyarrow`
+- o directamente desde `requirements.txt`
 
 Comando:
 
 ```bash
-pip install pandas openpyxl pyarrow
+pip install -r requirements.txt
 ```
 
 ## Como ejecutarlo en Windows
@@ -109,7 +136,7 @@ python -m venv .venv
 ### 3. Instalar dependencias
 
 ```powershell
-pip install pandas openpyxl pyarrow
+pip install -r requirements.txt
 ```
 
 ### 4. Ejecutar desde la raiz del repo
@@ -135,7 +162,7 @@ source .venv/bin/activate
 ### 3. Instalar dependencias
 
 ```bash
-pip install pandas openpyxl pyarrow
+pip install -r requirements.txt
 ```
 
 ### 4. Ejecutar desde la raiz del repo

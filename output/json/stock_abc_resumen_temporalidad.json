@@ -1,13 +1,32 @@
 {
   "snapshot_date": "2026-03-31",
-  "generated_at": "2026-04-02 10:36:32",
+  "generated_at": "2026-04-03 20:36:25",
   "numero_articulos_regulares": 4,
   "numero_articulos_estacionales": 351,
   "numero_articulos_intermitentes": 232,
   "numero_articulos_dormidos": 520,
+  "numero_articulos_erraticos": 54,
+  "numero_articulos_nuevos_sin_historico_suficiente": 3239,
   "numero_candidatos_mover": 6,
   "numero_candidatos_mantener": 688,
   "numero_candidatos_mover_fuera_temporada": 147,
+  "numero_revisar_manualmente": 3559,
+  "numero_pico_proximo": 1006,
+  "numero_posible_reactivacion_proxima": 610,
+  "conteo_temporalidad_clase": {
+    "Nuevo / sin histórico suficiente": 3239,
+    "Dormido": 520,
+    "Estacional": 351,
+    "Intermitente": 232,
+    "Errático": 54,
+    "Regular": 4
+  },
+  "conteo_acciones_recomendadas": {
+    "Revisar manualmente": 3559,
+    "Conviene mantener accesible": 688,
+    "Candidato a mover fuera de temporada": 147,
+    "Candidato a revisar para almacén secundario": 6
+  },
   "top_estacionales": [
     {
       "articulo": "132016",
@@ -85,7 +104,7 @@
       "articulo": "072098",
       "descripcion": "VASO CUSQUEÑA 33CL",
       "stock_actual_total": 4200.0,
-      "accion_recomendada": "Mantener en almacén principal",
+      "accion_recomendada": "Conviene mantener accesible",
       "warning_stock_dormido_real": true
     },
     {
@@ -99,7 +118,7 @@
       "articulo": "061029",
       "descripcion": "COPA 33CL LOGO NEGRO CASIMIRO TRIGO M2",
       "stock_actual_total": 2511.0,
-      "accion_recomendada": "Mantener en almacén principal",
+      "accion_recomendada": "Conviene mantener accesible",
       "warning_stock_dormido_real": true
     },
     {
@@ -134,7 +153,7 @@
       "articulo": "065003",
       "descripcion": "COPA 25 LOGO DORADO GRIMBERGEN",
       "stock_actual_total": 1053.0,
-      "accion_recomendada": "Mantener en almacén principal",
+      "accion_recomendada": "Conviene mantener accesible",
       "warning_stock_dormido_real": true
     },
     {
@@ -148,7 +167,7 @@
       "articulo": "086013",
       "descripcion": "TABLE TENT MADERA LOS CERVECISTAS",
       "stock_actual_total": 840.0,
-      "accion_recomendada": "Mantener en almacén principal",
+      "accion_recomendada": "Conviene mantener accesible",
       "warning_stock_dormido_real": true
     }
   ],
@@ -165,7 +184,7 @@
       "articulo": "014012",
       "descripcion": "CERVEZA 33CL MAHOU TOSTADA 0,0 (2751)",
       "riesgo_mover_almacen": "Alto",
-      "accion_recomendada": "Mantener en almacén principal",
+      "accion_recomendada": "Conviene mantener accesible",
       "peak_period_upcoming": "Marzo",
       "months_to_next_peak": 0.0
     },
@@ -181,7 +200,15 @@
       "articulo": "011026",
       "descripcion": "CERVEZA 33CLMAHOU IPA (3526)",
       "riesgo_mover_almacen": "Alto",
-      "accion_recomendada": "Mantener en almacén principal",
+      "accion_recomendada": "Conviene mantener accesible",
+      "peak_period_upcoming": "Marzo",
+      "months_to_next_peak": 0.0
+    },
+    {
+      "articulo": "061029",
+      "descripcion": "COPA 33CL LOGO NEGRO CASIMIRO TRIGO M2",
+      "riesgo_mover_almacen": "Alto",
+      "accion_recomendada": "Conviene mantener accesible",
       "peak_period_upcoming": "Marzo",
       "months_to_next_peak": 0.0
     },
@@ -189,7 +216,7 @@
       "articulo": "014926",
       "descripcion": "CERVEZA 25CL ALHAMBRA ESPECIAL SIN PACK",
       "riesgo_mover_almacen": "Alto",
-      "accion_recomendada": "Mantener en almacén principal",
+      "accion_recomendada": "Conviene mantener accesible",
       "peak_period_upcoming": "Marzo",
       "months_to_next_peak": 0.0
     },
@@ -213,21 +240,13 @@
       "articulo": "106009",
       "descripcion": "GORRA GRIS LOS CERVECISTAS",
       "riesgo_mover_almacen": "Alto",
-      "accion_recomendada": "Mantener en almacén principal",
+      "accion_recomendada": "Conviene mantener accesible",
       "peak_period_upcoming": "Marzo",
       "months_to_next_peak": 0.0
     },
     {
       "articulo": "106348",
       "descripcion": "GORRA ROJA Y BLANCA VIBRA MAHOU",
-      "riesgo_mover_almacen": "Alto",
-      "accion_recomendada": "Revisar manualmente",
-      "peak_period_upcoming": "Marzo",
-      "months_to_next_peak": 0.0
-    },
-    {
-      "articulo": "071173",
-      "descripcion": "VASO CRISTAL PARA CAÑA BRUTUS 25CL",
       "riesgo_mover_almacen": "Alto",
       "accion_recomendada": "Revisar manualmente",
       "peak_period_upcoming": "Marzo",

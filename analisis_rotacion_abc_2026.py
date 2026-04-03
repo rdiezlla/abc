@@ -17,6 +17,10 @@ AUDIT_DIR = OUTPUT_DIR / "auditoria"
 AUDIT_FILE = AUDIT_DIR / "analisis_rotacion_abc_auditoria.xlsx"
 RECENT_DAYS = 14
 ROLLING_DAYS = 30
+ACTION_KEEP_ACCESSIBLE = "Conviene mantener accesible"
+ACTION_REVIEW_SECONDARY = "Candidato a revisar para almacén secundario"
+ACTION_MOVE_OFF_SEASON = "Candidato a mover fuera de temporada"
+ACTION_MANUAL_REVIEW = "Revisar manualmente"
 
 
 @dataclass(frozen=True)
@@ -120,6 +124,20 @@ def safe_divide(numerator: pd.Series, denominator: pd.Series) -> pd.Series:
     num = pd.to_numeric(numerator, errors="coerce")
     den = pd.to_numeric(denominator, errors="coerce")
     return num.div(den.where(den != 0))
+
+
+def add_stock_usage_comparison_metrics(
+    frame: pd.DataFrame,
+    stock_col: str,
+    line_metric_col: str = "lineas_pi_30d",
+    qty_metric_col: str = "cantidad_pi_30d",
+) -> pd.DataFrame:
+    output = frame.copy()
+    output["cobertura_lineas_30d"] = safe_divide(output[stock_col], output[line_metric_col])
+    output["cobertura_cantidad_30d"] = safe_divide(output[stock_col], output[qty_metric_col])
+    output["indice_stock_vs_lineas_salida_30d"] = output["cobertura_lineas_30d"]
+    output["indice_stock_vs_cantidad_salida_30d"] = output["cobertura_cantidad_30d"]
+    return output
 
 
 def concat_frames(frames: list[pd.DataFrame]) -> pd.DataFrame:
@@ -689,6 +707,7 @@ def build_owner_article_ytd(
     movements: pd.DataFrame,
     owner_article_stock: pd.DataFrame,
     snapshot_date: pd.Timestamp,
+    detail_30d: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     snapshot_ts = end_of_day(snapshot_date)
     ytd_start = pd.Timestamp(year=snapshot_date.year, month=1, day=1)
@@ -749,7 +768,8 @@ def build_owner_article_ytd(
     detail = detail.merge(last_pi_hist, how="left", on=["owner_key", "article_key"])
     detail["descripcion"] = detail["descripcion_stock"].combine_first(detail["descripcion_pi"])
 
-    detail_30d = build_owner_article_30d(movements, owner_article_stock, snapshot_date)
+    if detail_30d is None:
+        detail_30d = build_owner_article_30d(movements, owner_article_stock, snapshot_date)
     detail = detail.merge(
         detail_30d[
             [
@@ -774,8 +794,7 @@ def build_owner_article_ytd(
     detail["inactivo_90d"] = to_yes_no(days_hist.gt(90) | detail["ultima_pi_historica"].isna())
     detail["dispersion_stock"] = detail["ubicaciones_con_stock"]
     detail["densidad_stock"] = safe_divide(detail["stock_actual"], detail["ubicaciones_con_stock"])
-    detail["cobertura_lineas_30d"] = safe_divide(detail["stock_actual"], detail["lineas_pi_30d"])
-    detail["cobertura_cantidad_30d"] = safe_divide(detail["stock_actual"], detail["cantidad_pi_30d"])
+    detail = add_stock_usage_comparison_metrics(detail, "stock_actual")
 
     stock_positive = detail["stock_actual"] > 0
     stock_high_threshold = detail.loc[stock_positive, "stock_actual"].quantile(0.75) if stock_positive.any() else 0
@@ -793,6 +812,7 @@ def build_owner_article_ytd(
         & (detail["inactivo_90d"] == "Sí")
         & ~recent_arrival_mask
     )
+    detail["flag_stock_alto_vs_uso_reciente"] = detail["flag_sobrestock"]
     detail["flag_reubicar"] = to_yes_no(
         detail["rotacion_final"].isin(["A", "B"])
         & (detail["ubicaciones_con_stock"] >= max(4, dispersion_threshold))
@@ -845,11 +865,14 @@ def build_owner_article_ytd(
             "dias_desde_ultima_pi_30d",
             "cobertura_lineas_30d",
             "cobertura_cantidad_30d",
+            "indice_stock_vs_lineas_salida_30d",
+            "indice_stock_vs_cantidad_salida_30d",
             "inactivo_30d",
             "inactivo_90d",
             "dispersion_stock",
             "densidad_stock",
             "flag_sobrestock",
+            "flag_stock_alto_vs_uso_reciente",
             "flag_reubicar",
         ]
     ]
@@ -859,6 +882,7 @@ def build_article_only_ytd(
     movements: pd.DataFrame,
     article_only_stock: pd.DataFrame,
     snapshot_date: pd.Timestamp,
+    detail_30d: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     snapshot_ts = end_of_day(snapshot_date)
     ytd_start = pd.Timestamp(year=snapshot_date.year, month=1, day=1)
@@ -910,7 +934,8 @@ def build_article_only_ytd(
     detail = detail.merge(last_pi_hist, how="left", on=["article_key"])
     detail["descripcion"] = detail["descripcion_stock"].combine_first(detail["descripcion_pi"])
 
-    detail_30d = build_article_only_30d(movements, article_only_stock, snapshot_date)
+    if detail_30d is None:
+        detail_30d = build_article_only_30d(movements, article_only_stock, snapshot_date)
     detail = detail.merge(
         detail_30d[["articulo", "lineas_pi_30d", "cantidad_pi_30d", "rotacion_final_30d"]],
         how="left",
@@ -922,8 +947,7 @@ def build_article_only_ytd(
     detail["inactivo_90d"] = to_yes_no(days_hist.gt(90) | detail["ultima_pi_historica"].isna())
     detail["dispersion_stock"] = detail["ubicaciones_con_stock"]
     detail["densidad_stock"] = safe_divide(detail["stock_actual_total"], detail["ubicaciones_con_stock"])
-    detail["cobertura_lineas_30d"] = safe_divide(detail["stock_actual_total"], detail["lineas_pi_30d"])
-    detail["cobertura_cantidad_30d"] = safe_divide(detail["stock_actual_total"], detail["cantidad_pi_30d"])
+    detail = add_stock_usage_comparison_metrics(detail, "stock_actual_total")
 
     stock_positive = detail["stock_actual_total"] > 0
     stock_high_threshold = detail.loc[stock_positive, "stock_actual_total"].quantile(0.75) if stock_positive.any() else 0
@@ -941,6 +965,7 @@ def build_article_only_ytd(
         & (detail["inactivo_90d"] == "Sí")
         & ~recent_arrival_mask
     )
+    detail["flag_stock_alto_vs_uso_reciente"] = detail["flag_sobrestock"]
     detail["flag_reubicar"] = to_yes_no(
         detail["rotacion_final_ytd"].isin(["A", "B"])
         & (detail["ubicaciones_con_stock"] >= max(4, dispersion_threshold))
@@ -979,11 +1004,14 @@ def build_article_only_ytd(
             "cantidad_cr_historico",
             "cobertura_lineas_30d",
             "cobertura_cantidad_30d",
+            "indice_stock_vs_lineas_salida_30d",
+            "indice_stock_vs_cantidad_salida_30d",
             "inactivo_30d",
             "inactivo_90d",
             "dispersion_stock",
             "densidad_stock",
             "flag_sobrestock",
+            "flag_stock_alto_vs_uso_reciente",
             "flag_reubicar",
         ]
     ]
@@ -1432,6 +1460,8 @@ def build_criteria_sheet(snapshot_date: pd.Timestamp, stock_file: Path) -> pd.Da
                 "Definición trimestre",
                 "Cobertura líneas 30d",
                 "Cobertura cantidad 30d",
+                "Índice stock vs líneas salida 30d",
+                "Índice stock vs cantidad salida 30d",
                 "Inactivo 30d",
                 "Inactivo 90d",
                 "Dispersión stock",
@@ -1448,13 +1478,15 @@ def build_criteria_sheet(snapshot_date: pd.Timestamp, stock_file: Path) -> pd.Da
                 f"Sin PI en el periodo y con última CR en los últimos {RECENT_DAYS} días respecto al fin del periodo",
                 "A hasta 80%, B hasta 95%, C resto, D si no rota",
                 "Se genera automáticamente cada trimestre disponible hasta la fecha de la foto; el trimestre actual se corta en la fecha de la foto",
-                "stock_actual / lineas_pi_30d, con control de división por cero",
-                "stock_actual / cantidad_pi_30d, con control de división por cero",
+                "Métrica histórica legada: compara stock actual frente a salidas PI recientes por líneas; no representa cobertura clásica de demanda final",
+                "Métrica histórica legada: compara stock actual frente a salidas PI recientes por cantidad; no representa cobertura clásica de demanda final",
+                "Alias interpretativo de cobertura_lineas_30d para consumo analítico y dashboards",
+                "Alias interpretativo de cobertura_cantidad_30d para consumo analítico y dashboards",
                 "Sí cuando la última PI histórica está a más de 30 días o no existe",
                 "Sí cuando la última PI histórica está a más de 90 días o no existe",
                 "Número de ubicaciones con stock actual",
                 "stock_actual / ubicaciones_con_stock",
-                "Heurística moderada: stock en cuartil alto, rotación C/D, sin entrada reciente y sin actividad en 90 días",
+                "Heurística prudente de stock alto relativo a uso reciente: stock en cuartil alto, rotación C/D, sin entrada reciente y sin actividad en 90 días",
                 "Heurística moderada: rotación A/B con dispersión alta y densidad baja",
                 now,
             ],
@@ -1529,11 +1561,14 @@ def build_dashboard_datasets(
             "dias_desde_ultima_pi_30d",
             "cobertura_lineas_30d",
             "cobertura_cantidad_30d",
+            "indice_stock_vs_lineas_salida_30d",
+            "indice_stock_vs_cantidad_salida_30d",
             "inactivo_30d",
             "inactivo_90d",
             "dispersion_stock",
             "densidad_stock",
             "flag_sobrestock",
+            "flag_stock_alto_vs_uso_reciente",
             "flag_reubicar",
         ]
     ]
@@ -1596,11 +1631,14 @@ def build_dashboard_datasets(
             "dias_desde_ultima_pi_30d",
             "cobertura_lineas_30d",
             "cobertura_cantidad_30d",
+            "indice_stock_vs_lineas_salida_30d",
+            "indice_stock_vs_cantidad_salida_30d",
             "inactivo_30d",
             "inactivo_90d",
             "dispersion_stock",
             "densidad_stock",
             "flag_sobrestock",
+            "flag_stock_alto_vs_uso_reciente",
             "flag_reubicar",
         ]
     ]
@@ -1764,6 +1802,7 @@ def build_kpi_json(
         "referencias_D_30d": count_class(article_current, "rotacion_final_30d", "D"),
         "referencias_recien_llegado_30d": count_class(article_current, "rotacion_final_30d", "Sin rotación 30d, recién llegado"),
         "articulos_flag_sobrestock": int(article_current["flag_sobrestock"].eq("Sí").sum()),
+        "articulos_flag_stock_alto_vs_uso_reciente": int(article_current["flag_stock_alto_vs_uso_reciente"].eq("Sí").sum()),
         "articulos_flag_reubicar": int(article_current["flag_reubicar"].eq("Sí").sum()),
         "top_10_articulos_ytd": json.loads(
             top_ytd[
@@ -1794,9 +1833,9 @@ def build_temporality_criteria_sheet(snapshot_date: pd.Timestamp) -> pd.DataFram
                 "Definición Nuevo / sin histórico suficiente",
                 "Definición warning rotación baja pero estacional",
                 "Definición warning stock dormido real",
-                "Definición mover a almacén secundario",
-                "Definición mover solo fuera de temporada",
-                "Definición mantener en almacén principal",
+                "Definición candidato a revisar para almacén secundario",
+                "Definición candidato a mover fuera de temporada",
+                "Definición conviene mantener accesible",
                 "Definición revisar manualmente",
                 "Limitaciones",
             ],
@@ -1809,14 +1848,14 @@ def build_temporality_criteria_sheet(snapshot_date: pd.Timestamp) -> pd.DataFram
                 "ADI >= 1.32 y CV2 < 0.49, con demanda espaciada pero no especialmente volátil",
                 "CV2 >= 0.49 o patrón lumpiness, con variabilidad alta entre periodos activos",
                 "Sin actividad PI en los últimos 12 meses y con histórico muy débil o claramente agotado",
-                "Sin PI histórico o con menos de 3 meses activos / menos de 6 meses observados efectivos",
+                "Sin PI histórico o con menos de 3 meses activos o menos de 6 meses observados efectivos",
                 "SKU con rotación baja actual pero patrón estacional recurrente y pico futuro identificable",
                 "SKU con stock actual, nula actividad reciente y sin evidencia de patrón recurrente aprovechable",
-                "Baja rotación YTD y 30d, sobrestock o cobertura alta, inactividad reciente, baja recurrencia y sin pico próximo esperado",
+                "Baja rotación YTD y 30d, stock alto relativo a salidas recientes, inactividad reciente, baja recurrencia y sin pico próximo esperado; requiere contraste operativo antes de mover",
                 "Patrón estacional claro, fuera de temporada actual y con necesidad de reposición antes del siguiente pico",
-                "Actividad actual alta o pico próximo esperado con riesgo alto de romper servicio si se traslada",
+                "Actividad actual relevante, entrada reciente o pico próximo esperado con riesgo alto de penalizar servicio si se mueve",
                 "Poco histórico, patrón ambiguo o comportamiento errático no robusto para automatizar decisión",
-                "Heurística explicable, no modelo predictivo. Conviene revisar junto con contexto comercial, campañas y capacidad real de almacenes.",
+                "Heurística explicable, no modelo predictivo ni modelo completo de retornos. Conviene revisar junto con contexto comercial, campañas y capacidad real de almacenes.",
             ],
         }
     )
@@ -1837,12 +1876,17 @@ def build_temporality_outputs(
             "rotacion_final_ytd",
             "rotacion_final_30d",
             "stock_actual_total",
+            "ultima_cr",
+            "dias_desde_ultima_cr",
             "cobertura_lineas_30d",
             "cobertura_cantidad_30d",
+            "indice_stock_vs_lineas_salida_30d",
+            "indice_stock_vs_cantidad_salida_30d",
             "inactivo_30d",
             "inactivo_90d",
             "propietarios_distintos",
             "flag_sobrestock",
+            "flag_stock_alto_vs_uso_reciente",
             "flag_reubicar",
         ]
     ].drop_duplicates().copy()
@@ -1864,9 +1908,16 @@ def build_temporality_outputs(
                 "numero_articulos_estacionales": 0,
                 "numero_articulos_intermitentes": 0,
                 "numero_articulos_dormidos": 0,
+                "numero_articulos_erraticos": 0,
+                "numero_articulos_nuevos_sin_historico_suficiente": 0,
                 "numero_candidatos_mover": 0,
                 "numero_candidatos_mantener": 0,
                 "numero_candidatos_mover_fuera_temporada": 0,
+                "numero_revisar_manualmente": 0,
+                "numero_pico_proximo": 0,
+                "numero_posible_reactivacion_proxima": 0,
+                "conteo_temporalidad_clase": {},
+                "conteo_acciones_recomendadas": {},
                 "top_estacionales": [],
                 "top_dormidos": [],
                 "top_riesgo_mala_decision_si_se_mueven": [],
@@ -2269,61 +2320,87 @@ def build_temporality_outputs(
         & summary["rotacion_final_ytd"].isin(["C", "D", "Sin rotación, recién llegado"])
     )
     summary["warning_stock_dormido_real"] = summary["es_dormido"] & (summary["stock_actual_total"] > 0) & summary["inactivo_90d"].eq("Sí")
+    summary["warning_stock_inmovilizado_sin_salida_reciente"] = summary["warning_stock_dormido_real"]
+    summary["flag_pico_proximo"] = summary["months_to_next_peak"].fillna(99) <= 2
+    recent_arrival = (
+        summary["rotacion_final_ytd"].astype(str).str.contains("recién llegado", case=False, na=False)
+        | summary["rotacion_final_30d"].astype(str).str.contains("recién llegado", case=False, na=False)
+    )
+    summary["warning_posible_reactivacion_proxima"] = (
+        (summary["flag_pico_proximo"] & summary["temporalidad_clase"].isin(["Estacional", "Intermitente", "Dormido"]))
+        | (recent_arrival & (summary["dias_desde_ultima_cr"].fillna(9999) <= ROLLING_DAYS))
+    )
 
     low_rotation_ytd = summary["rotacion_final_ytd"].isin(["C", "D", "Sin rotación, recién llegado"])
     low_rotation_30d = summary["rotacion_final_30d"].isin(["C", "D", "Sin rotación 30d, recién llegado"])
     no_recent = summary["inactivo_90d"].eq("Sí")
-    overstock = summary["flag_sobrestock"].eq("Sí") | (summary["cobertura_lineas_30d"].fillna(0) >= 12)
-    no_peak_soon = summary["months_to_next_peak"].fillna(99) > 2
+    stock_high_vs_recent_use = summary["flag_stock_alto_vs_uso_reciente"].eq("Sí") | (summary["indice_stock_vs_lineas_salida_30d"].fillna(0) >= 12)
+    no_peak_soon = ~summary["flag_pico_proximo"]
     high_risk_move = summary["es_estacional"] | summary["warning_rotacion_baja_pero_estacional"] | summary["rotacion_final_30d"].isin(["A", "B"])
 
     summary["riesgo_mover_almacen"] = "Medio"
     summary.loc[summary["es_dormido"] & no_peak_soon, "riesgo_mover_almacen"] = "Bajo"
-    summary.loc[high_risk_move | summary["temporalidad_clase"].eq("Regular"), "riesgo_mover_almacen"] = "Alto"
-
-    summary["accion_recomendada"] = "Revisar manualmente"
     summary.loc[
-        summary["rotacion_final_30d"].isin(["A", "B"]) | summary["rotacion_final_ytd"].isin(["A", "B"]) | (summary["months_to_next_peak"].fillna(99) <= 2),
+        high_risk_move | summary["temporalidad_clase"].eq("Regular") | summary["warning_posible_reactivacion_proxima"],
+        "riesgo_mover_almacen",
+    ] = "Alto"
+
+    summary["accion_recomendada"] = ACTION_MANUAL_REVIEW
+    summary.loc[
+        summary["rotacion_final_30d"].isin(["A", "B"])
+        | summary["rotacion_final_ytd"].isin(["A", "B"])
+        | summary["flag_pico_proximo"]
+        | summary["warning_posible_reactivacion_proxima"],
         "accion_recomendada",
-    ] = "Mantener en almacén principal"
+    ] = ACTION_KEEP_ACCESSIBLE
     summary.loc[
         summary["es_estacional"] & low_rotation_ytd & low_rotation_30d & no_peak_soon,
         "accion_recomendada",
-    ] = "Mover solo fuera de temporada"
+    ] = ACTION_MOVE_OFF_SEASON
     summary.loc[
-        ~summary["es_estacional"] & low_rotation_ytd & low_rotation_30d & overstock & no_recent & (summary["recurrencia_estacional"] < 0.4),
+        ~summary["es_estacional"]
+        & low_rotation_ytd
+        & low_rotation_30d
+        & stock_high_vs_recent_use
+        & no_recent
+        & (summary["recurrencia_estacional"] < 0.4),
         "accion_recomendada",
-    ] = "Mover a almacén secundario"
+    ] = ACTION_REVIEW_SECONDARY
     summary.loc[
         summary["temporalidad_clase"].isin(["Nuevo / sin histórico suficiente", "Errático"]),
         "accion_recomendada",
-    ] = "Revisar manualmente"
+    ] = ACTION_MANUAL_REVIEW
+
+    summary["accion_recomendada_codigo"] = "revisar_manualmente"
+    summary.loc[summary["accion_recomendada"].eq(ACTION_KEEP_ACCESSIBLE), "accion_recomendada_codigo"] = "mantener_accesible"
+    summary.loc[summary["accion_recomendada"].eq(ACTION_REVIEW_SECONDARY), "accion_recomendada_codigo"] = "revisar_almacen_secundario"
+    summary.loc[summary["accion_recomendada"].eq(ACTION_MOVE_OFF_SEASON), "accion_recomendada_codigo"] = "mover_fuera_temporada"
 
     summary["motivo_recomendacion"] = "Patrón ambiguo o poco robusto; conviene contraste manual."
     summary.loc[
-        summary["accion_recomendada"].eq("Mantener en almacén principal"),
+        summary["accion_recomendada"].eq(ACTION_KEEP_ACCESSIBLE),
         "motivo_recomendacion",
-    ] = "Actividad actual relevante o pico próximo esperado; moverlo ahora aumenta riesgo operativo."
+    ] = "Actividad actual relevante, entrada reciente o pico próximo esperado; conviene mantenerlo accesible para no tensionar la operativa."
     summary.loc[
-        summary["accion_recomendada"].eq("Mover solo fuera de temporada"),
+        summary["accion_recomendada"].eq(ACTION_MOVE_OFF_SEASON),
         "motivo_recomendacion",
-    ] = "SKU estacional con rotación baja fuera de temporada y recurrencia suficiente para planificar su retorno antes del pico."
+    ] = "SKU estacional con rotación baja fuera de temporada y recurrencia suficiente para planificar su retorno antes del siguiente pico."
     summary.loc[
-        summary["accion_recomendada"].eq("Mover a almacén secundario"),
+        summary["accion_recomendada"].eq(ACTION_REVIEW_SECONDARY),
         "motivo_recomendacion",
-    ] = "Baja rotación actual, sin actividad reciente ni patrón estacional fuerte, con señales de sobrestock o cobertura alta."
+    ] = "Baja rotación actual, sin actividad reciente ni patrón estacional fuerte, con stock alto relativo a salidas recientes; conviene revisar si puede vivir mejor en almacén secundario."
 
     summary["ventana_reubicacion_recomendada"] = "Revisión manual en próximo ciclo mensual"
     summary.loc[
-        summary["accion_recomendada"].eq("Mantener en almacén principal"),
+        summary["accion_recomendada"].eq(ACTION_KEEP_ACCESSIBLE),
         "ventana_reubicacion_recomendada",
-    ] = "Sin traslado recomendado"
+    ] = "Sin movimiento recomendado por ahora"
     summary.loc[
-        summary["accion_recomendada"].eq("Mover a almacén secundario"),
+        summary["accion_recomendada"].eq(ACTION_REVIEW_SECONDARY),
         "ventana_reubicacion_recomendada",
-    ] = "Traslado viable de inmediato"
+    ] = "Revisable en el ciclo actual si no hay restricciones operativas"
     summary.loc[
-        summary["accion_recomendada"].eq("Mover solo fuera de temporada"),
+        summary["accion_recomendada"].eq(ACTION_MOVE_OFF_SEASON),
         "ventana_reubicacion_recomendada",
     ] = summary["peak_period_upcoming"].fillna(summary["next_peak_quarter"]).map(
         lambda value: f"Fuera de temporada; reponer 1-2 meses antes de {value}" if pd.notna(value) else "Fuera de temporada; revisar antes del siguiente pico"
@@ -2333,9 +2410,9 @@ def build_temporality_outputs(
     summary.loc[summary["riesgo_mover_almacen"].eq("Alto"), "prioridad_revision"] = "Alta"
     summary.loc[summary["riesgo_mover_almacen"].eq("Bajo"), "prioridad_revision"] = "Baja"
 
-    summary["es_candidato_mover"] = summary["accion_recomendada"].eq("Mover a almacén secundario")
-    summary["es_candidato_mover_fuera_temporada"] = summary["accion_recomendada"].eq("Mover solo fuera de temporada")
-    summary["es_candidato_mantener"] = summary["accion_recomendada"].eq("Mantener en almacén principal")
+    summary["es_candidato_mover"] = summary["accion_recomendada"].eq(ACTION_REVIEW_SECONDARY)
+    summary["es_candidato_mover_fuera_temporada"] = summary["accion_recomendada"].eq(ACTION_MOVE_OFF_SEASON)
+    summary["es_candidato_mantener"] = summary["accion_recomendada"].eq(ACTION_KEEP_ACCESSIBLE)
 
     temporality_article = add_metadata_columns(summary.copy(), snapshot_date, generated_at)
     temporality_article = temporality_article[
@@ -2381,8 +2458,11 @@ def build_temporality_outputs(
             "es_erratico",
             "peak_period_upcoming",
             "months_to_next_peak",
+            "flag_pico_proximo",
             "warning_rotacion_baja_pero_estacional",
             "warning_stock_dormido_real",
+            "warning_stock_inmovilizado_sin_salida_reciente",
+            "warning_posible_reactivacion_proxima",
         ]
     ]
 
@@ -2398,10 +2478,16 @@ def build_temporality_outputs(
             "rotacion_final_ytd",
             "rotacion_final_30d",
             "stock_actual_total",
+            "ultima_cr",
+            "dias_desde_ultima_cr",
             "cobertura_lineas_30d",
             "cobertura_cantidad_30d",
+            "indice_stock_vs_lineas_salida_30d",
+            "indice_stock_vs_cantidad_salida_30d",
             "inactivo_30d",
             "inactivo_90d",
+            "flag_sobrestock",
+            "flag_stock_alto_vs_uso_reciente",
             "total_lineas_pi_historico",
             "years_with_activity",
             "temporalidad_clase",
@@ -2409,6 +2495,7 @@ def build_temporality_outputs(
             "recurrencia_estacional",
             "riesgo_mover_almacen",
             "accion_recomendada",
+            "accion_recomendada_codigo",
             "motivo_recomendacion",
             "ventana_reubicacion_recomendada",
             "prioridad_revision",
@@ -2421,8 +2508,11 @@ def build_temporality_outputs(
             "es_candidato_mantener",
             "peak_period_upcoming",
             "months_to_next_peak",
+            "flag_pico_proximo",
             "warning_rotacion_baja_pero_estacional",
             "warning_stock_dormido_real",
+            "warning_stock_inmovilizado_sin_salida_reciente",
+            "warning_posible_reactivacion_proxima",
         ]
     ].rename(columns={"total_lineas_pi_historico": "lineas_pi_historico"})
 
@@ -2438,6 +2528,14 @@ def build_temporality_outputs(
         ["months_to_next_peak", "stock_actual_total"],
         ascending=[True, False],
     ).head(10)
+    temporalidad_counts = {
+        str(key): int(value)
+        for key, value in temporality_article["temporalidad_clase"].value_counts(dropna=False).to_dict().items()
+    }
+    decision_counts = {
+        str(key): int(value)
+        for key, value in decision_article["accion_recomendada"].value_counts(dropna=False).to_dict().items()
+    }
 
     temporality_json = {
         "snapshot_date": snapshot_date.strftime("%Y-%m-%d"),
@@ -2446,9 +2544,18 @@ def build_temporality_outputs(
         "numero_articulos_estacionales": int((temporality_article["temporalidad_clase"] == "Estacional").sum()),
         "numero_articulos_intermitentes": int((temporality_article["temporalidad_clase"] == "Intermitente").sum()),
         "numero_articulos_dormidos": int((temporality_article["temporalidad_clase"] == "Dormido").sum()),
+        "numero_articulos_erraticos": int((temporality_article["temporalidad_clase"] == "Errático").sum()),
+        "numero_articulos_nuevos_sin_historico_suficiente": int(
+            (temporality_article["temporalidad_clase"] == "Nuevo / sin histórico suficiente").sum()
+        ),
         "numero_candidatos_mover": int(decision_article["es_candidato_mover"].sum()),
         "numero_candidatos_mantener": int(decision_article["es_candidato_mantener"].sum()),
         "numero_candidatos_mover_fuera_temporada": int(decision_article["es_candidato_mover_fuera_temporada"].sum()),
+        "numero_revisar_manualmente": int(decision_article["accion_recomendada"].eq(ACTION_MANUAL_REVIEW).sum()),
+        "numero_pico_proximo": int(decision_article["flag_pico_proximo"].sum()),
+        "numero_posible_reactivacion_proxima": int(decision_article["warning_posible_reactivacion_proxima"].sum()),
+        "conteo_temporalidad_clase": temporalidad_counts,
+        "conteo_acciones_recomendadas": decision_counts,
         "top_estacionales": json.loads(
             top_estacionales[
                 ["articulo", "descripcion", "recurrencia_estacional", "seasonality_index_quarterly", "peak_period_upcoming"]
@@ -2597,10 +2704,10 @@ def main() -> None:
     owner_article_stock, article_only_stock = prepare_stock(stock_file)
     owner_dim, article_dim = build_dimensions(movements, owner_article_stock, article_only_stock)
 
-    detail_stock = build_owner_article_ytd(movements, owner_article_stock, snapshot_date)
-    article_ytd = build_article_only_ytd(movements, article_only_stock, snapshot_date)
     owner_30d = build_owner_article_30d(movements, owner_article_stock, snapshot_date)
     article_30d = build_article_only_30d(movements, article_only_stock, snapshot_date)
+    detail_stock = build_owner_article_ytd(movements, owner_article_stock, snapshot_date, detail_30d=owner_30d)
+    article_ytd = build_article_only_ytd(movements, article_only_stock, snapshot_date, detail_30d=article_30d)
     owner_quarterly, article_quarterly = build_quarterly_outputs(
         movements,
         owner_dim,
