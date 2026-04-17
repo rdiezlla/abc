@@ -1,102 +1,102 @@
 {
-  "snapshot_date": "2026-03-31",
-  "generated_at": "2026-04-03 20:36:25",
-  "numero_articulos_regulares": 4,
-  "numero_articulos_estacionales": 351,
-  "numero_articulos_intermitentes": 232,
-  "numero_articulos_dormidos": 520,
-  "numero_articulos_erraticos": 54,
-  "numero_articulos_nuevos_sin_historico_suficiente": 3239,
-  "numero_candidatos_mover": 6,
-  "numero_candidatos_mantener": 688,
-  "numero_candidatos_mover_fuera_temporada": 147,
-  "numero_revisar_manualmente": 3559,
-  "numero_pico_proximo": 1006,
-  "numero_posible_reactivacion_proxima": 610,
+  "snapshot_date": "2026-04-17",
+  "generated_at": "2026-04-17 10:37:56",
+  "numero_articulos_regulares": 3,
+  "numero_articulos_estacionales": 355,
+  "numero_articulos_intermitentes": 228,
+  "numero_articulos_dormidos": 509,
+  "numero_articulos_erraticos": 50,
+  "numero_articulos_nuevos_sin_historico_suficiente": 3236,
+  "numero_candidatos_mover": 4,
+  "numero_candidatos_mantener": 750,
+  "numero_candidatos_mover_fuera_temporada": 126,
+  "numero_revisar_manualmente": 3501,
+  "numero_pico_proximo": 1078,
+  "numero_posible_reactivacion_proxima": 660,
   "conteo_temporalidad_clase": {
-    "Nuevo / sin histórico suficiente": 3239,
-    "Dormido": 520,
-    "Estacional": 351,
-    "Intermitente": 232,
-    "Errático": 54,
-    "Regular": 4
+    "Nuevo / sin histórico suficiente": 3236,
+    "Dormido": 509,
+    "Estacional": 355,
+    "Intermitente": 228,
+    "Errático": 50,
+    "Regular": 3
   },
   "conteo_acciones_recomendadas": {
-    "Revisar manualmente": 3559,
-    "Conviene mantener accesible": 688,
-    "Candidato a mover fuera de temporada": 147,
-    "Candidato a revisar para almacén secundario": 6
+    "Revisar manualmente": 3501,
+    "Conviene mantener accesible": 750,
+    "Candidato a mover fuera de temporada": 126,
+    "Candidato a revisar para almacén secundario": 4
   },
   "top_estacionales": [
+    {
+      "articulo": "043035",
+      "descripcion": "CARRO VIP CERVECISTAS",
+      "recurrencia_estacional": 1.0,
+      "seasonality_index_quarterly": 3.6,
+      "peak_period_upcoming": "Abril"
+    },
     {
       "articulo": "132016",
       "descripcion": "PORTERÍA FÚTBOL7",
       "recurrencia_estacional": 1.0,
-      "seasonality_index_quarterly": 3.8958333333,
+      "seasonality_index_quarterly": 3.3,
       "peak_period_upcoming": "Mayo"
-    },
-    {
-      "articulo": "204050",
-      "descripcion": "BASE SOMBRILLA GRIS \"NUEVA\" 1/3",
-      "recurrencia_estacional": 1.0,
-      "seasonality_index_quarterly": 3.3055555556,
-      "peak_period_upcoming": "Abril"
-    },
-    {
-      "articulo": "131131",
-      "descripcion": "MAPA BARRIOS DE MADRID LETRAS Y RETIRO",
-      "recurrencia_estacional": 1.0,
-      "seasonality_index_quarterly": 3.3055555556,
-      "peak_period_upcoming": "Mayo"
-    },
-    {
-      "articulo": "152022",
-      "descripcion": "BAÚL PLÁSTICO NEGRO",
-      "recurrencia_estacional": 1.0,
-      "seasonality_index_quarterly": 3.2692307692,
-      "peak_period_upcoming": "Mayo"
-    },
-    {
-      "articulo": "014926",
-      "descripcion": "CERVEZA 25CL ALHAMBRA ESPECIAL SIN PACK",
-      "recurrencia_estacional": 1.0,
-      "seasonality_index_quarterly": 3.1875,
-      "peak_period_upcoming": "Marzo"
     },
     {
       "articulo": "091006",
       "descripcion": "BARRA MADERA  FUNDACIÓN LOGO MAHOU",
       "recurrencia_estacional": 1.0,
-      "seasonality_index_quarterly": 3.0909090909,
+      "seasonality_index_quarterly": 3.2727272727,
       "peak_period_upcoming": "Noviembre"
-    },
-    {
-      "articulo": "041028",
-      "descripcion": "ESTANTERÍA DORADA 200X35X105 SAN MIGUEL",
-      "recurrencia_estacional": 1.0,
-      "seasonality_index_quarterly": 3.0909090909,
-      "peak_period_upcoming": "Abril"
     },
     {
       "articulo": "014009",
       "descripcion": "CERVEZA 33CL MAHOU SIN GLUTEN PACK CESTA",
       "recurrencia_estacional": 1.0,
-      "seasonality_index_quarterly": 3.06,
+      "seasonality_index_quarterly": 3.24,
       "peak_period_upcoming": "Junio"
     },
     {
-      "articulo": "202010",
-      "descripcion": "SOMBRILLA ECO BEIGE HOJA DESDE1890MAHOU",
+      "articulo": "011116",
+      "descripcion": "MAHOU 5 ESTRELLAS 33CL SAN ISIDRO 2026",
       "recurrencia_estacional": 1.0,
-      "seasonality_index_quarterly": 3.0357142857,
-      "peak_period_upcoming": "Mayo"
+      "seasonality_index_quarterly": 3.2210526316,
+      "peak_period_upcoming": "Abril"
     },
     {
-      "articulo": "131135",
-      "descripcion": "MAPA BARRIOS DE MADRID MALASAÑA",
+      "articulo": "071120",
+      "descripcion": "VASO CRISTAL 45CL GAS SOLAN TRADE",
       "recurrencia_estacional": 1.0,
-      "seasonality_index_quarterly": 2.975,
-      "peak_period_upcoming": "Mayo"
+      "seasonality_index_quarterly": 3.15,
+      "peak_period_upcoming": "Septiembre"
+    },
+    {
+      "articulo": "032012",
+      "descripcion": "TABURETE ALTO ROJO",
+      "recurrencia_estacional": 1.0,
+      "seasonality_index_quarterly": 3.0,
+      "peak_period_upcoming": "Marzo"
+    },
+    {
+      "articulo": "161108",
+      "descripcion": "NEVERA/EXPOSITORA LOGO M 1890 MAHOU",
+      "recurrencia_estacional": 1.0,
+      "seasonality_index_quarterly": 3.0,
+      "peak_period_upcoming": "Marzo"
+    },
+    {
+      "articulo": "106032",
+      "descripcion": "GORRA ADULTO BLANCA FUNDACION VOLUNTARIO",
+      "recurrencia_estacional": 1.0,
+      "seasonality_index_quarterly": 3.0,
+      "peak_period_upcoming": "Octubre"
+    },
+    {
+      "articulo": "041033",
+      "descripcion": "ESTANTERÍA 170X30X211 5BALDAS  TRIPLE",
+      "recurrencia_estacional": 1.0,
+      "seasonality_index_quarterly": 2.88,
+      "peak_period_upcoming": "Marzo"
     }
   ],
   "top_dormidos": [
@@ -112,13 +112,6 @@
       "descripcion": "JARRA CRISTAL 1,1L ICON OKTOBERFEST 2021",
       "stock_actual_total": 2829.0,
       "accion_recomendada": "Revisar manualmente",
-      "warning_stock_dormido_real": true
-    },
-    {
-      "articulo": "061029",
-      "descripcion": "COPA 33CL LOGO NEGRO CASIMIRO TRIGO M2",
-      "stock_actual_total": 2511.0,
-      "accion_recomendada": "Conviene mantener accesible",
       "warning_stock_dormido_real": true
     },
     {
@@ -143,13 +136,6 @@
       "warning_stock_dormido_real": true
     },
     {
-      "articulo": "062017",
-      "descripcion": "COPA 25CL LOGO VERDE1891 SAN MIGUEL",
-      "stock_actual_total": 1105.0,
-      "accion_recomendada": "Revisar manualmente",
-      "warning_stock_dormido_real": true
-    },
-    {
       "articulo": "065003",
       "descripcion": "COPA 25 LOGO DORADO GRIMBERGEN",
       "stock_actual_total": 1053.0,
@@ -164,28 +150,42 @@
       "warning_stock_dormido_real": true
     },
     {
+      "articulo": "062017",
+      "descripcion": "COPA 25CL LOGO VERDE1891 SAN MIGUEL",
+      "stock_actual_total": 865.0,
+      "accion_recomendada": "Conviene mantener accesible",
+      "warning_stock_dormido_real": true
+    },
+    {
       "articulo": "086013",
       "descripcion": "TABLE TENT MADERA LOS CERVECISTAS",
       "stock_actual_total": 840.0,
+      "accion_recomendada": "Conviene mantener accesible",
+      "warning_stock_dormido_real": true
+    },
+    {
+      "articulo": "124101",
+      "descripcion": "MASCARILLA  AZUL T-M SOLAN TRADE",
+      "stock_actual_total": 817.0,
       "accion_recomendada": "Conviene mantener accesible",
       "warning_stock_dormido_real": true
     }
   ],
   "top_riesgo_mala_decision_si_se_mueven": [
     {
-      "articulo": "018428",
-      "descripcion": "AGUA 50CL PLÁSTICO SOLAN 2025 CALCIO, MA",
+      "articulo": "071169",
+      "descripcion": "VASO SIDRA 50CL MARIANO LOS CACHIS",
       "riesgo_mover_almacen": "Alto",
       "accion_recomendada": "Revisar manualmente",
-      "peak_period_upcoming": "Marzo",
+      "peak_period_upcoming": "Abril",
       "months_to_next_peak": 0.0
     },
     {
-      "articulo": "014012",
-      "descripcion": "CERVEZA 33CL MAHOU TOSTADA 0,0 (2751)",
+      "articulo": "071171",
+      "descripcion": "VASO CRISTAL 50CL MARIA SANGRIA \"LOS CAC",
       "riesgo_mover_almacen": "Alto",
-      "accion_recomendada": "Conviene mantener accesible",
-      "peak_period_upcoming": "Marzo",
+      "accion_recomendada": "Revisar manualmente",
+      "peak_period_upcoming": "Abril",
       "months_to_next_peak": 0.0
     },
     {
@@ -193,23 +193,15 @@
       "descripcion": "COPA BRUTUS RELIEVE 2026 (6 UNIDADES POR",
       "riesgo_mover_almacen": "Alto",
       "accion_recomendada": "Revisar manualmente",
-      "peak_period_upcoming": "Marzo",
+      "peak_period_upcoming": "Abril",
       "months_to_next_peak": 0.0
     },
     {
-      "articulo": "011026",
-      "descripcion": "CERVEZA 33CLMAHOU IPA (3526)",
+      "articulo": "072098",
+      "descripcion": "VASO CUSQUEÑA 33CL",
       "riesgo_mover_almacen": "Alto",
       "accion_recomendada": "Conviene mantener accesible",
-      "peak_period_upcoming": "Marzo",
-      "months_to_next_peak": 0.0
-    },
-    {
-      "articulo": "061029",
-      "descripcion": "COPA 33CL LOGO NEGRO CASIMIRO TRIGO M2",
-      "riesgo_mover_almacen": "Alto",
-      "accion_recomendada": "Conviene mantener accesible",
-      "peak_period_upcoming": "Marzo",
+      "peak_period_upcoming": "Abril",
       "months_to_next_peak": 0.0
     },
     {
@@ -217,39 +209,47 @@
       "descripcion": "CERVEZA 25CL ALHAMBRA ESPECIAL SIN PACK",
       "riesgo_mover_almacen": "Alto",
       "accion_recomendada": "Conviene mantener accesible",
-      "peak_period_upcoming": "Marzo",
+      "peak_period_upcoming": "Abril",
       "months_to_next_peak": 0.0
     },
     {
-      "articulo": "012085",
-      "descripcion": "CERVEZA ALHAMBRA MINI 22.5CL PACK 6UND X",
-      "riesgo_mover_almacen": "Alto",
-      "accion_recomendada": "Revisar manualmente",
-      "peak_period_upcoming": "Marzo",
-      "months_to_next_peak": 0.0
-    },
-    {
-      "articulo": "061054",
-      "descripcion": "COPA MAHOU 1890 33CL 2026 RELIEVE NUEVA(",
-      "riesgo_mover_almacen": "Alto",
-      "accion_recomendada": "Revisar manualmente",
-      "peak_period_upcoming": "Marzo",
-      "months_to_next_peak": 0.0
-    },
-    {
-      "articulo": "106009",
-      "descripcion": "GORRA GRIS LOS CERVECISTAS",
+      "articulo": "G000347",
+      "descripcion": "PERFIL GUIA DE LONGITUD 347MM",
       "riesgo_mover_almacen": "Alto",
       "accion_recomendada": "Conviene mantener accesible",
-      "peak_period_upcoming": "Marzo",
+      "peak_period_upcoming": "Abril",
       "months_to_next_peak": 0.0
     },
     {
-      "articulo": "106348",
-      "descripcion": "GORRA ROJA Y BLANCA VIBRA MAHOU",
+      "articulo": "018002",
+      "descripcion": "AGUA CRISTAL 75CL SOLAN C/GAS CJ 12UD. C",
       "riesgo_mover_almacen": "Alto",
       "accion_recomendada": "Revisar manualmente",
-      "peak_period_upcoming": "Marzo",
+      "peak_period_upcoming": "Abril",
+      "months_to_next_peak": 0.0
+    },
+    {
+      "articulo": "011000",
+      "descripcion": "CERVEZA 33CL MAHOU MAESTRA DUNKEL",
+      "riesgo_mover_almacen": "Alto",
+      "accion_recomendada": "Conviene mantener accesible",
+      "peak_period_upcoming": "Abril",
+      "months_to_next_peak": 0.0
+    },
+    {
+      "articulo": "R000001",
+      "descripcion": "TERMINAL R (DERECHA) PARA GUIA",
+      "riesgo_mover_almacen": "Alto",
+      "accion_recomendada": "Conviene mantener accesible",
+      "peak_period_upcoming": "Abril",
+      "months_to_next_peak": 0.0
+    },
+    {
+      "articulo": "061002",
+      "descripcion": "COPA 22CL LOGO ROJO  5 ESTRELLAS  MAHOU",
+      "riesgo_mover_almacen": "Alto",
+      "accion_recomendada": "Conviene mantener accesible",
+      "peak_period_upcoming": "Abril",
       "months_to_next_peak": 0.0
     }
   ],
